@@ -10,14 +10,18 @@
 --
 -- sortie: a simple, bespoke deployment tool
 --
-------------------------------------------------------------------------
+-----------------------------------------------------------------------------
 
 
 module Main
     (main)
 where
 
-import Sortie.Project.Parse (findAndParseProjectFile, showProject)
+import Sortie.Project.Parse
+import Sortie.SourceControl
+import Distribution.Simple.Utils
 
 main :: IO ()
-main = findAndParseProjectFile >>= putStrLn . showProject
+main = topHandler $
+       getChangedFiles >>= mapM_ print >>
+       findAndParseProjectFile >>= putStrLn . showProject
