@@ -18,22 +18,31 @@ module Main
     (main)
 where
 
-import System.IO (hPutStr, stderr)
-import Distribution.Simple.Command (CommandParse(..),
-                                    commandsRun, commandAddAction)
+import Control.Monad               (when)
+import Distribution.Simple.Command (CommandParse(..), commandsRun,
+                                    commandAddAction)
 import Distribution.Simple.Setup   (fromFlag)
 import Distribution.Simple.Utils   (die, topHandler)
 import Distribution.Text           (display)
 import System.Environment          (getArgs, getProgName)
+import System.IO                   (hPutStr, stderr)
 import Text.Printf                 (printf)
 
 import Sortie.Command
     ( Action , Command
     , GlobalFlags(..),  globalCommand , ReleaseFlags(..), releaseCommand
     , DeployFlags(..),  deployCommand , MigrateFlags(..), migrateCommand
+    , ShowFlags(..),    showCommand
     )
+import Sortie.Project              (Project)
+import Sortie.Project.Parse        (findAndParseProjectFile, showProject)
 import qualified Paths_sortie      (version)
 
+guardNoExtraArgs :: String -> [String] -> IO ()
+guardNoExtraArgs name args =
+    when (length args > 0) $ die $
+             "the `" ++ name ++"' command does not accept any " ++
+             "positional arguments: " ++ unwords args
 
 releaseAction :: Action ReleaseFlags
 releaseAction = undefined
@@ -44,10 +53,17 @@ deployAction = undefined
 migrateAction :: Action MigrateFlags
 migrateAction = undefined
 
-commands :: [Command (IO ())]
-commands = [ commandAddAction releaseCommand  releaseAction
-           , commandAddAction deployCommand   deployAction
-           , commandAddAction migrateCommand  migrateAction
+showAction :: Action ShowFlags
+showAction _flags args project = do
+  { guardNoExtraArgs "show" args
+  ; putStrLn (showProject project)
+  }
+
+commands :: [Command (Project -> IO ())]
+commands = [ commandAddAction releaseCommand releaseAction
+           , commandAddAction deployCommand  deployAction
+           , commandAddAction migrateCommand migrateAction
+           , commandAddAction showCommand    showAction
            ]
 
 run :: [String] -> IO ()
@@ -62,7 +78,7 @@ run args =
           ; CommandHelp      help      -> printCommandHelp help
           ; CommandList      opts      -> printOptionsList opts
           ; CommandErrors    errs      -> printErrors errs
-          ; CommandReadyToGo action    -> action
+          ; CommandReadyToGo action    -> findAndParseProjectFile >>= action
           }
       }
     where { pr = hPutStr stderr

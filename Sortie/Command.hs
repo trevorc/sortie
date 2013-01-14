@@ -19,10 +19,12 @@ module Sortie.Command
     , ReleaseFlags(..)
     , DeployFlags(..)
     , MigrateFlags(..)
+    , ShowFlags(..)
     , globalCommand
     , releaseCommand
     , deployCommand
     , migrateCommand
+    , showCommand
     )
 where
 
@@ -30,11 +32,13 @@ import Distribution.Simple.Command (CommandUI(..), Command, option)
 import Distribution.Simple.Setup   (Flag(..), trueArg, falseArg)
 import Text.Printf                 (printf)
 
+import Sortie.Project              (Project)
+
 data GlobalFlags = GlobalFlags
     { globalVersion :: Flag Bool
     }
 
-type Action flags = flags -> [String] -> IO ()
+type Action flags = flags -> [String] -> Project -> IO ()
 
 noArgsUsage :: String -> String -> String
 noArgsUsage = printf "Usage: %s %s [FLAGS]"
@@ -116,5 +120,20 @@ migrateCommand
                    "Migrate the database in the named environments " ++
                    "or locally if none are given. Sets up the database if it " ++
                    "has not yet been created.\n"
+      , commandOptions = const []
+      }
+
+newtype ShowFlags = ShowFlags ()
+
+showCommand :: CommandUI ShowFlags
+showCommand
+    = CommandUI {
+        commandName         = "show"
+      , commandSynopsis     = "Show the project configuration."
+      , commandUsage        = printf "Usage: %s show"
+      , commandDefaultFlags = ShowFlags ()
+      , commandDescription  =
+          Just . const $
+                   "Dumps the project configuration in a human-readable fashion.\n"
       , commandOptions = const []
       }

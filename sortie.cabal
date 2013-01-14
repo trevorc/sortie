@@ -1,13 +1,14 @@
 Name: sortie
 Version: 0.1
 License: AllRightsReserved
-Cabal-Version: >= 1.8
+Cabal-Version: >= 1.10
 Build-Type: Simple
 
 Executable sortie
   Main-Is: Main.hs
+  Default-Language: Haskell2010
   Build-Depends: base,
-                 Cabal >= 1.8,
+                 Cabal >= 1.10,
                  containers,
                  directory,
                  filepath,

@@ -118,9 +118,8 @@ findAndParseProjectFile = do
 showProject :: Project -> String
 showProject project = render $ header $$ body
     where { header = ppFields projectDescriptionFields project
-          ; body = vcat [ space $$ ppFields environmentFields env
-                          | env <- project ^. Project.environments
-                        ]
+          ; body = vcat . map ppSection $ project ^. Project.environments
+          ; ppSection env = space $$ ppFields environmentFields env
           }
 
 
