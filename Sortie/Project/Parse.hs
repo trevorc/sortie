@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Sortie.Project.Parse
@@ -33,7 +34,7 @@ import Distribution.Simple.Utils (warn, withFileContents)
 import Distribution.Verbosity    (normal)
 import System.Directory          (getCurrentDirectory, getDirectoryContents)
 import System.FilePath           ((</>), joinPath, splitDirectories)
-import Text.PrettyPrint          (($$), render, space, vcat)
+import Text.PrettyPrint          (($$), (<+>), nest, render, space, text, vcat)
 import qualified Data.Map as Map
 
 import Sortie.Project            (Environment, Project,
@@ -90,16 +91,16 @@ findProjectFile = containingDirectories <$> getCurrentDirectory >>=
 
 projectParser :: String -> ParseResult Project
 projectParser str = do { (header, body) <- span isSimpleField <$> readFields str
-                       ; set Project.environments <$>
-                         mapM parseBody body <*>
+                       ; set Project.environments . Map.fromList <$>
+                         mapM parseEnvironment body <*>
                          parseHeader header
                        }
     where { isSimpleField F{} = True
           ; isSimpleField _   = False
           ; parseHeader = accumFields projectDescriptionFields emptyProject
-          ; parseBody (Section _ "environment" _ fields)
-              = accumFields environmentFields emptyEnvironment fields
-          ; parseBody _ = error "X"
+          ; parseEnvironment (Section _ "environment" name fields)
+              = ((,) name) <$> accumFields environmentFields emptyEnvironment fields
+          ; parseEnvironment _ = error "X"
           }
 
 findAndParseProjectFile :: IO Project
@@ -118,8 +119,11 @@ findAndParseProjectFile = do
 showProject :: Project -> String
 showProject project = render $ header $$ body
     where { header = ppFields projectDescriptionFields project
-          ; body = vcat . map ppSection $ project ^. Project.environments
-          ; ppSection env = space $$ ppFields environmentFields env
+          ; body = vcat . map (uncurry ppSection) . Map.toList $
+                   project ^. Project.environments
+          ; ppSection name env = space $$
+                                 "environment" <+> text name $$
+                                 nest 2 (ppFields environmentFields env)
           }
 
 

@@ -30,6 +30,7 @@ module Sortie.Project.Type
 where
 
 import Control.Lens            (makeLenses)
+import Data.Map                (Map)
 import Distribution.Package    (PackageName)
 import Distribution.Version    (Version)
 
@@ -48,7 +49,7 @@ data Project = Project
     , _repository   :: String
     , _s3Bucket     :: String
     , _s3KeyPrefix  :: String
-    , _environments :: [Environment]
+    , _environments :: Map String Environment
     } deriving (Show, Eq)
 
 makeLenses ''Environment

@@ -33,6 +33,7 @@ where
 import Sortie.Project.Type
 import Distribution.Package    (PackageName(PackageName))
 import Distribution.Version    (Version(Version))
+import qualified Data.Map as Map
 
 emptyEnvironment :: Environment
 emptyEnvironment
@@ -53,5 +54,5 @@ emptyProject
        , _repository   = ""
        , _s3Bucket     = ""
        , _s3KeyPrefix  = ""
-       , _environments = []
+       , _environments = Map.empty
        }
