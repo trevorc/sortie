@@ -20,7 +20,7 @@ where
 
 import Control.Applicative       (Applicative(..), (<$>), (<$))
 import Control.Lens              ((^.), set, view)
-import Control.Monad             (ap, foldM)
+import Control.Monad             (ap, foldM, when)
 import Control.Monad.Loops       (firstM)
 import Data.List                 (inits)
 import Distribution.Text         (disp, parse)
@@ -28,8 +28,8 @@ import Distribution.ParseUtils   (Field(..), FieldDescr(FieldDescr),
                                   ParseResult(..), locatedErrorMsg,
                                   parseFilePathQ, parseFreeText,
                                   parseTokenQ, ppFields, showFilePath, showFreeText,
-                                  showPWarning, showToken, simpleField,
-                                  readFields, warning, lineNo)
+                                  showPWarning, showToken, simpleField, syntaxError,
+                                  readFields, fName, warning, lineNo)
 import Distribution.Simple.Utils (warn, withFileContents)
 import Distribution.Verbosity    (normal)
 import System.Directory          (getCurrentDirectory, getDirectoryContents)
@@ -98,9 +98,15 @@ projectParser str = do { (header, body) <- span isSimpleField <$> readFields str
     where { isSimpleField F{} = True
           ; isSimpleField _   = False
           ; parseHeader = accumFields projectDescriptionFields emptyProject
-          ; parseEnvironment (Section _ "environment" name fields)
-              = ((,) name) <$> accumFields environmentFields emptyEnvironment fields
-          ; parseEnvironment _ = error "X"
+          ; parseEnvironment f@(Section _ "environment" name fields)
+              = do { when (null name) $ syntaxError (lineNo f)
+                              "environment must be given a name"
+                   ; ((,) name) <$>
+                     accumFields environmentFields emptyEnvironment fields
+                   }
+          ; parseEnvironment f = syntaxError (lineNo f) $
+                                 "Unknown stanza " ++ fName f
+
           }
 
 findAndParseProjectFile :: IO Project
