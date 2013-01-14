@@ -19,107 +19,30 @@ module Main
 where
 
 import System.IO (hPutStr, stderr)
-import Distribution.Simple.Command (CommandParse(..), CommandUI(..), Command,
-                                    commandsRun, commandAddAction, option)
-import Distribution.Simple.Setup   (Flag(..), fromFlag, trueArg, falseArg)
+import Distribution.Simple.Command (CommandParse(..),
+                                    commandsRun, commandAddAction)
+import Distribution.Simple.Setup   (fromFlag)
 import Distribution.Simple.Utils   (die, topHandler)
 import Distribution.Text           (display)
 import System.Environment          (getArgs, getProgName)
 import Text.Printf                 (printf)
 
+import Sortie.Command
+    ( Action , Command
+    , GlobalFlags(..),  globalCommand , ReleaseFlags(..), releaseCommand
+    , DeployFlags(..),  deployCommand , MigrateFlags(..), migrateCommand
+    )
 import qualified Paths_sortie      (version)
 
-data GlobalFlags = GlobalFlags
-    { globalVersion :: Flag Bool
-    }
-
-type Action flags = flags -> [String] -> IO ()
-
-defaultGlobalFlags :: GlobalFlags
-defaultGlobalFlags
-    = GlobalFlags {
-        globalVersion = Flag False
-      }
-
-globalCommand :: CommandUI GlobalFlags
-globalCommand
-    = CommandUI {
-        commandName = ""
-      , commandSynopsis = ""
-      , commandUsage = const $ "This program is Sortie, the simple, " ++
-                       "bespoke deployment tool."
-      , commandDescription =
-          Just $ \prog -> "For help with a particular command, run:\n" ++
-                          "  " ++ prog ++ " COMMAND --help\n\n"
-      , commandDefaultFlags = defaultGlobalFlags
-      , commandOptions =
-          const [ option "V" ["version"]
-                  "show version information"
-                  globalVersion (\v flags -> flags { globalVersion = v })
-                  trueArg
-                ]
-      }
-
-type ReleaseFlags = Flag Bool
-
-releaseCommand :: CommandUI ReleaseFlags
-releaseCommand
-    = CommandUI {
-        commandName         = "release"
-      , commandSynopsis     = "Cuts a new tagged release."
-      , commandUsage        = noArgsUsage "release"
-      , commandDefaultFlags = Flag False
-      , commandDescription  =
-          Just . const $
-                   "Tags HEAD with the project version; creates " ++
-                   "the deployment artifact; uploads the deployment artifact"
-      , commandOptions =
-          const [ option "n" ["dry-run"]
-                  "perform no action; only show what would be done"
-                  id const falseArg
-                ]
-      }
 
 releaseAction :: Action ReleaseFlags
 releaseAction = undefined
 
-deployCommand :: CommandUI ()
-deployCommand
-    = CommandUI {
-        commandName         = "deploy"
-      , commandSynopsis     = "Deploys the project to an environment"
-      , commandUsage        = printf "Usage: %s deploy [VERSION] [ENVIRONMENTS]"
-      , commandDefaultFlags = ()
-      , commandDescription  =
-          Just . const $
-                   "Deploys the specified version, or the version name " ++
-                   "in the project file, to the given environment."
-      , commandOptions = const []
-      }
-
-deployAction :: Action ()
+deployAction :: Action DeployFlags
 deployAction = undefined
 
-migrateCommand :: CommandUI ()
-migrateCommand
-    = CommandUI {
-        commandName         = "migrate"
-      , commandSynopsis     = "Run the database migrations."
-      , commandUsage        = printf "Usage: %s migrate [ENVIRONMENTS]"
-      , commandDefaultFlags = ()
-      , commandDescription  =
-          Just . const $
-                   "Migrate the database in the named environments " ++
-                   "or locally if none are given. Sets up the database if if " ++
-                   "has not yet been created"
-      , commandOptions = const []
-      }
-
-migrateAction :: Action ()
+migrateAction :: Action MigrateFlags
 migrateAction = undefined
-
-noArgsUsage :: String -> String -> String
-noArgsUsage = printf "Usage: %s %s [FLAGS]"
 
 commands :: [Command (IO ())]
 commands = [ commandAddAction releaseCommand  releaseAction
