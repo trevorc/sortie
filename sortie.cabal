@@ -20,3 +20,5 @@ Executable sortie
                  regex-posix,
                  split
   GHC-Options: -Wall -O2
+  if !os(darwin)
+     LD-Options: -static

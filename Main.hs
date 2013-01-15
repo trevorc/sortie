@@ -18,15 +18,16 @@ module Main
     (main)
 where
 
+import Control.Applicative         (Applicative(..), (<$>))
 import Control.Monad               (when)
-import Distribution.Simple.Command (CommandParse(..), commandsRun,
-                                    commandAddAction)
 import Distribution.Simple.Setup   (fromFlag)
 import Distribution.Simple.Utils   (die, topHandler)
 import Distribution.Text           (display)
 import System.Environment          (getArgs, getProgName)
 import System.IO                   (hPutStr, stderr)
 import Text.Printf                 (printf)
+import Distribution.Simple.Command
+    ( CommandParse(..), commandsRun, commandAddAction )
 
 import Sortie.Command
     ( Action , Command
@@ -34,9 +35,12 @@ import Sortie.Command
     , DeployFlags(..),  deployCommand , MigrateFlags(..), migrateCommand
     , ShowFlags(..),    showCommand
     )
-import Sortie.Project              (Project)
-import Sortie.Project.Parse        (findAndParseProjectFile, showProject)
-import qualified Paths_sortie      (version)
+import Sortie.Command.Release      (release)
+import Sortie.Context              (Context(Context))
+import Sortie.Project.Parse
+    ( findAndParseProjectFile, findProjectDirectory, showProject )
+import qualified Sortie.Context as Context (projectDirectory, project, verbosity)
+import qualified Paths_sortie (version)
 
 guardNoExtraArgs :: String -> [String] -> IO ()
 guardNoExtraArgs name args =
@@ -45,7 +49,9 @@ guardNoExtraArgs name args =
              "positional arguments: " ++ unwords args
 
 releaseAction :: Action ReleaseFlags
-releaseAction = undefined
+releaseAction _flags args Context{..} =
+    guardNoExtraArgs "release" args >>
+    release project projectDirectory
 
 deployAction :: Action DeployFlags
 deployAction = undefined
@@ -54,12 +60,10 @@ migrateAction :: Action MigrateFlags
 migrateAction = undefined
 
 showAction :: Action ShowFlags
-showAction _flags args project = do
-  { guardNoExtraArgs "show" args
-  ; putStrLn (showProject project)
-  }
+showAction _flags args Context{..} = guardNoExtraArgs "show" args >>
+                                     putStrLn (showProject project)
 
-commands :: [Command (Project -> IO ())]
+commands :: [Command]
 commands = [ commandAddAction releaseCommand releaseAction
            , commandAddAction deployCommand  deployAction
            , commandAddAction migrateCommand migrateAction
@@ -72,13 +76,13 @@ run args =
       { CommandHelp   help          -> printCommandHelp help
       ; CommandList   opts          -> printOptionsList opts
       ; CommandErrors errs          -> printErrors errs
-      ; CommandReadyToGo (GlobalFlags{..}, commandParse) ->
+      ; CommandReadyToGo (fl@GlobalFlags{..}, commandParse) ->
         case commandParse of
           { _ | fromFlag globalVersion -> printVersion
           ; CommandHelp      help      -> printCommandHelp help
           ; CommandList      opts      -> printOptionsList opts
           ; CommandErrors    errs      -> printErrors errs
-          ; CommandReadyToGo action    -> findAndParseProjectFile >>= action
+          ; CommandReadyToGo action    -> setupContext fl >>= action
           }
       }
     where { pr = hPutStr stderr
@@ -89,8 +93,11 @@ run args =
                                        ; pr $ printf "%s version %s\n"
                                             prog (display Paths_sortie.version)
                                        }
+          ; setupContext flags    = Context <$>
+                                    findProjectDirectory <*>
+                                    findAndParseProjectFile <*>
+                                    (pure . fromFlag $ globalVerbosity flags)
           }
-
 
 main :: IO ()
 main = topHandler $ getArgs >>= run

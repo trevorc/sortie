@@ -13,6 +13,7 @@
 module Sortie.Utils
     ( die
     , dieWithLocation
+    , parseMaybe
     , readMaybe
     , readCommand
     , readCommand_
@@ -22,6 +23,7 @@ where
 
 import Control.Applicative       ((<$>))
 import Control.Lens              (_4, view)
+import Data.List                 (find)
 import Control.Monad             (void)
 import Data.Foldable             (Foldable(..))
 import Data.Traversable          (Traversable(..))
@@ -35,11 +37,11 @@ import System.Process            (CreateProcess(..), StdStream(UseHandle),
 instance Foldable    ((,) a) where foldMap f         = snd . fmap f
 instance Traversable ((,) a) where traverse f (x, y) = ((,) x) <$> f y
 
+parseMaybe :: ReadS a -> String -> Maybe a
+parseMaybe p s = fst <$> find (null . snd) (p s)
+
 readMaybe :: Read a => String -> Maybe a
-readMaybe s = case reads s of
-                { [(x, "")] -> Just x
-                ; _         -> Nothing
-                }
+readMaybe = parseMaybe reads
 
 runProcessSilently :: FilePath -> [String] -> IO ExitCode
 runProcessSilently cmd args =
@@ -57,4 +59,3 @@ readCommand = rawSystemStdout normal
 
 readCommand_ :: FilePath -> [String] -> IO ()
 readCommand_ = (void .) . readCommand
-

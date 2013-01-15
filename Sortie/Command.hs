@@ -1,14 +1,12 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Main
+-- Module      :  Sortie.Command
 -- Copyright   :  (c) Bitbase 2013
 -- License     :  AllRightsReserved
 --
 -- Maintainer  :  trevor@bitba.se
 -- Stability   :  experimental
 -- Portability :  portable
---
--- sortie: a simple, bespoke deployment tool
 --
 -----------------------------------------------------------------------------
 
@@ -28,17 +26,15 @@ module Sortie.Command
     )
 where
 
-import Distribution.Simple.Command (CommandUI(..), Command, option)
+import Distribution.Simple.Command (CommandUI(..), option)
 import Distribution.Simple.Setup   (Flag(..), trueArg, falseArg)
+import Distribution.Verbosity      (normal)
 import Text.Printf                 (printf)
+import qualified Distribution.Simple.Command as Simple (Command)
+import Sortie.Context              (Context, GlobalFlags(..))
 
-import Sortie.Project              (Project)
-
-data GlobalFlags = GlobalFlags
-    { globalVersion :: Flag Bool
-    }
-
-type Action flags = flags -> [String] -> Project -> IO ()
+type Action flags = flags -> [String] -> Context -> IO ()
+type Command = Simple.Command (Context -> IO ())
 
 noArgsUsage :: String -> String -> String
 noArgsUsage = printf "Usage: %s %s [FLAGS]"
@@ -46,7 +42,8 @@ noArgsUsage = printf "Usage: %s %s [FLAGS]"
 defaultGlobalFlags :: GlobalFlags
 defaultGlobalFlags
     = GlobalFlags {
-        globalVersion = Flag False
+        globalVersion   = Flag False
+      , globalVerbosity = Flag normal
       }
 
 globalCommand :: CommandUI GlobalFlags
@@ -62,7 +59,7 @@ globalCommand
       , commandDefaultFlags = defaultGlobalFlags
       , commandOptions =
           const [ option "V" ["version"]
-                  "show version information"
+                  "Show version information"
                   globalVersion (\v flags -> flags { globalVersion = v })
                   trueArg
                 ]

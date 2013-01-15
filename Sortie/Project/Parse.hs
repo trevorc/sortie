@@ -12,7 +12,8 @@
 ------------------------------------------------------------------------
 
 module Sortie.Project.Parse
-    ( findAndParseProjectFile
+    ( findProjectDirectory
+    , findAndParseProjectFile
     , projectParser
     , showProject
     )
@@ -24,16 +25,18 @@ import Control.Monad             (ap, foldM, when)
 import Control.Monad.Loops       (firstM)
 import Data.List                 (inits)
 import Distribution.Text         (disp, parse)
-import Distribution.ParseUtils   (Field(..), FieldDescr(FieldDescr),
-                                  ParseResult(..), locatedErrorMsg,
-                                  parseFilePathQ, parseFreeText,
-                                  parseTokenQ, ppFields, showFilePath, showFreeText,
-                                  showPWarning, showToken, simpleField, syntaxError,
-                                  readFields, fName, warning, lineNo)
+import Distribution.ParseUtils
+    ( Field(..), FieldDescr(FieldDescr), ParseResult(..)
+    , locatedErrorMsg, parseFilePathQ, parseFreeText
+    , parseTokenQ, ppFields, showFilePath, showFreeText
+    , showPWarning, showToken, simpleField, syntaxError
+    , readFields, fName, warning, lineNo )
 import Distribution.Simple.Utils (warn, withFileContents)
 import Distribution.Verbosity    (normal)
-import System.Directory          (getCurrentDirectory, getDirectoryContents)
-import System.FilePath           ((</>), joinPath, splitDirectories)
+import System.Directory
+    ( getCurrentDirectory, doesFileExist )
+import System.FilePath
+    ( (</>), joinPath, normalise, splitDirectories )
 import Text.PrettyPrint          (($$), (<+>), nest, render, space, text, vcat)
 import qualified Data.Map as Map
 
@@ -82,12 +85,15 @@ containingDirectories :: FilePath -> [FilePath]
 containingDirectories = map joinPath . reverse . drop 1 . inits .
                         splitDirectories
 
-findProjectFile :: IO (Maybe FilePath)
-findProjectFile = containingDirectories <$> getCurrentDirectory >>=
-                  fmap (fmap (</> projectFileName)) .
-                  firstM containsProjectFile
-    where containsProjectFile = fmap (elem projectFileName) .
-                                getDirectoryContents
+findProjectDirectory :: IO FilePath
+findProjectDirectory = containingDirectories . normalise <$>
+                       getCurrentDirectory >>=
+                       firstM containsProjectFile >>=
+                       maybe (die "could not find project file") return
+    where containsProjectFile = doesFileExist . (</> projectFileName)
+
+findProjectFile :: IO FilePath
+findProjectFile = (</> projectFileName) <$> findProjectDirectory
 
 projectParser :: String -> ParseResult Project
 projectParser str = do { (header, body) <- span isSimpleField <$> readFields str
@@ -111,7 +117,7 @@ projectParser str = do { (header, body) <- span isSimpleField <$> readFields str
 
 findAndParseProjectFile :: IO Project
 findAndParseProjectFile = do
-  { path <- findProjectFile >>= maybe (die "could not find project file") return
+  { path <- findProjectFile
   ; withFileContents path $ \s ->
       case projectParser s of
         { ParseFailed e -> uncurry (dieWithLocation path) (locatedErrorMsg e)

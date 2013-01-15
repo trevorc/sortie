@@ -11,8 +11,8 @@
 -----------------------------------------------------------------------------
 
 module Sortie.Project
-    ( Environment()
-    , Project()
+    ( Environment
+    , Project
     , host
     , user
     , databaseName

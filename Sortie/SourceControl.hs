@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Sortie.Project.Parse
@@ -16,6 +17,8 @@ module Sortie.SourceControl
     , isWorkingTreeDirty
     , showFileStatus
     , createTag
+    , listTags
+    , versionToTag
     )
 where
 
@@ -26,6 +29,7 @@ import Data.Version                 (showVersion)
 import Distribution.Version         (Version)
 import System.Exit                  (ExitCode(..))
 import Text.ParserCombinators.ReadP (get, readP_to_S)
+import Text.Printf                  (printf)
 import Text.Regex.Posix             ((=~))
 
 import Sortie.Utils                 (readMaybe, readCommand, readCommand_,
@@ -53,12 +57,22 @@ instance Read FileStatus where
 
 instance Show FileStatus where show = showFileStatus
 
+data FileChange = FileChange
+    { path   :: FilePath
+    , status :: FileStatus
+    }
+
+instance Show FileChange where show = showFileChange
+
 showFileStatus :: FileStatus -> String
 showFileStatus New        = "N"
 showFileStatus Deleted    = "D"
 showFileStatus Modified   = "M"
 showFileStatus Unmerged   = "U"
 showFileStatus TypeChange = "T"
+
+showFileChange :: FileChange -> String
+showFileChange FileChange{..} = printf "%s %s" (show status) path
 
 isWorkingTreeDirty :: IO Bool
 isWorkingTreeDirty =
@@ -68,9 +82,9 @@ isWorkingTreeDirty =
 diffLinePattern :: String
 diffLinePattern = "^:[0-7]+ [0-7]+ [0-9a-f]+ [0-9a-f]+ (.)[0-9]*\t([^\t\n]+)$"
 
-processDiffLine :: String -> Maybe (FilePath, FileStatus)
-processDiffLine line = do { (fp, Just st) <- fmap readMaybe <$> match
-                          ; return (fp, st)
+processDiffLine :: String -> Maybe FileChange
+processDiffLine line = do { (fp, st) <- match
+                          ; FileChange fp <$> readMaybe st
                           }
     where match :: Maybe (FilePath, String)
           match = case line =~ diffLinePattern of
@@ -78,11 +92,16 @@ processDiffLine line = do { (fp, Just st) <- fmap readMaybe <$> match
                     ; _           -> Nothing
                     }
 
-getChangedFiles :: IO [(FilePath, FileStatus)]
+getChangedFiles :: IO [FileChange]
 getChangedFiles = mapMaybe processDiffLine . lines <$>
                   readCommand "git" ["diff-index", "HEAD"]
 
+versionToTag :: Version -> String
+versionToTag = ('v':) . showVersion
+
 createTag :: Version -> IO String
-createTag version = versionString <$
-                    readCommand_ "git" ["tag", versionString, "HEAD"]
-    where versionString = 'v' : showVersion version
+createTag version = tag <$ readCommand_ "git" ["tag", tag, "HEAD"]
+    where tag = versionToTag version
+
+listTags :: IO [String]
+listTags = lines <$> readCommand "git" ["tag", "-l"]
