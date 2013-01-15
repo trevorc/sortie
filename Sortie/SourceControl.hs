@@ -14,6 +14,7 @@
 module Sortie.SourceControl
     ( FileStatus(..)
     , getChangedFiles
+    , hasUncommittedChanges
     , isWorkingTreeDirty
     , showFileStatus
     , createTag
@@ -30,7 +31,7 @@ import Distribution.Version         (Version)
 import System.Exit                  (ExitCode(..))
 import Text.ParserCombinators.ReadP (get, readP_to_S)
 import Text.Printf                  (printf)
-import Text.Regex.Posix             ((=~))
+import Text.Regex.PCRE              ((=~))
 
 import Sortie.Utils                 (readMaybe, readCommand, readCommand_,
                                      runProcessSilently)
@@ -78,6 +79,9 @@ isWorkingTreeDirty :: IO Bool
 isWorkingTreeDirty =
     (/= ExitSuccess) <$>
     runProcessSilently "git" ["update-index", "--refresh"]
+
+hasUncommittedChanges :: IO Bool
+hasUncommittedChanges = not . null <$> getChangedFiles
 
 diffLinePattern :: String
 diffLinePattern = "^:[0-7]+ [0-7]+ [0-9a-f]+ [0-9a-f]+ (.)[0-9]*\t([^\t\n]+)$"

@@ -49,9 +49,9 @@ guardNoExtraArgs name args =
              "positional arguments: " ++ unwords args
 
 releaseAction :: Action ReleaseFlags
-releaseAction _flags args Context{..} =
+releaseAction (ReleaseFlags dryRun) args Context{..} =
     guardNoExtraArgs "release" args >>
-    release project projectDirectory
+    release project projectDirectory (fromFlag dryRun)
 
 deployAction :: Action DeployFlags
 deployAction = undefined

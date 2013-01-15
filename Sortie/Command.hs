@@ -27,7 +27,7 @@ module Sortie.Command
 where
 
 import Distribution.Simple.Command (CommandUI(..), option)
-import Distribution.Simple.Setup   (Flag(..), trueArg, falseArg)
+import Distribution.Simple.Setup   (Flag(..), trueArg)
 import Distribution.Verbosity      (normal)
 import Text.Printf                 (printf)
 import qualified Distribution.Simple.Command as Simple (Command)
@@ -83,7 +83,7 @@ releaseCommand
           const [ option "n" ["dry-run"]
                   "perform no action; only show what would be done"
                   getReleaseFlags (const . ReleaseFlags)
-                  falseArg
+                  trueArg
                 ]
       }
 

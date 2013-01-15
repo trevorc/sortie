@@ -17,7 +17,7 @@ Executable sortie
                  pretty,
                  process,
                  regex-base,
-                 regex-posix,
+                 regex-pcre,
                  split
   GHC-Options: -Wall -O2
   if !os(darwin)

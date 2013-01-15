@@ -18,38 +18,40 @@ module Sortie.Leiningen
     )
 where
 
-import Control.Applicative       ((<$>))
 import Control.Lens              (view)
 import Data.Maybe                (listToMaybe, mapMaybe)
-import Data.Version              (Version(..), parseVersion)
-import Distribution.Package      (PackageName)
+import Data.Version              (Version(..), parseVersion, showVersion)
+import Distribution.Package      (PackageName(PackageName))
 import Distribution.Simple.Utils (withFileContents)
 import System.FilePath           ((</>))
 import Text.Printf               (printf)
-import Text.Regex.Posix          ((=~))
+import Text.Regex.PCRE           ((=~))
 import Text.ParserCombinators.ReadP (readP_to_S)
 
 import Sortie.Project            (Project)
-import Sortie.Utils              (die, parseMaybe, readCommand_, readMaybe)
+import Sortie.Utils              (die, parseMaybe, readCommand_)
 import qualified Sortie.Project as Project
 
 type LeiningenCommand = [String]
 
 artifactFileName :: Project -> FilePath
 artifactFileName project = printf "%s-%s.war"
-                           (show . view Project.name    $ project)
-                           (show . view Project.version $ project)
+                           (getPackageName . view Project.name $ project)
+                           (showVersion . view Project.version $ project)
+    where getPackageName (PackageName name) = name
 
 projectFileName :: FilePath
 projectFileName = "project.clj"
 
 getProjectName :: FilePath -> IO PackageName
-getProjectName = parseProjectField "name" projectNameParser readMaybe
-    where projectNameParser = "defproject"
+getProjectName = parseProjectField "name" projectNamePattern (Just . PackageName)
+    where projectNamePattern = "defproject[[:space:]]+" ++
+                               "(?:[[:alnum:]_.-]+/)?" ++
+                               "([[:alnum:]_-]+)"
 
 getProjectVersion :: FilePath -> IO Version
 getProjectVersion = parseProjectField "version" projectVersionPattern readVersion
-    where { projectVersionPattern = "defproject.*\"([0-9][^\"]+)\""
+    where { projectVersionPattern = "defproject.*\"([[:digit:]][^\"]+)\""
           ; readVersion = parseMaybe $ readP_to_S parseVersion
           }
 
