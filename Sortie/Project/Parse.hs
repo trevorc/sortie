@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Sortie.Project.Parse
@@ -9,7 +10,7 @@
 -- Stability   :  experimental
 -- Portability :  portable
 --
-------------------------------------------------------------------------
+-----------------------------------------------------------------------------
 
 module Sortie.Project.Parse
     ( findProjectDirectory

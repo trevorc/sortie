@@ -19,14 +19,14 @@ import Control.Lens            ((^.))
 import Control.Monad           (when)
 import Data.Version            (showVersion)
 import System.Exit             (exitSuccess)
-import System.FilePath         ((</>))
+import System.FilePath         ((</>), takeFileName)
 
-import Sortie.Leiningen        (artifactFileName, leinDo)
+import Sortie.Leiningen        (createArtifact)
 import Sortie.Project          (Project)
 import Sortie.Utils            (die)
 import Sortie.SourceControl
     ( hasUncommittedChanges, getChangedFiles
-    , listTags, versionToTag, createTag )
+    , ensureTagForHEAD )
 import qualified Sortie.Project as Project
     ( name, version, s3Bucket, s3KeyPrefix )
 import qualified Sortie.Leiningen as Lein
@@ -48,22 +48,19 @@ release project dir dryRun =
        ; dieUnless not           changedFiles     =<< hasUncommittedChanges
        ; dieUnless (== name)     nameMismatch     =<< Lein.getProjectName dir
        ; dieUnless (== version)  versionMismatch  =<< Lein.getProjectVersion dir
-       ; dieUnless (notElem tag) tagAlreadyExists =<< listTags
-       ; when dryRun $ do { putStrLn $ "create tag " ++ tag
-                          ; putStrLn $ "create artifact " ++ artifactPath
-                          ; putStrLn $ "put artifact to s3://" ++ s3Bucket ++ s3Key
+       ; ensureTagForHEAD undefined dryRun version
+       ; artifactPath <- createArtifact undefined dryRun dir project
+       ; when dryRun $ do { putStrLn $ "put artifact to s3://" ++
+                                     s3Bucket ++ s3KeyPrefix </>
+                                     takeFileName artifactPath
                           ; exitSuccess
                           }
-       ; _ <- createTag version
-       ; leinDo [["clean"], ["ring", "uberwar", artifactPath]]
        ; deployWarToS3
        }
     where { name        = project ^. Project.name
           ; version     = project ^. Project.version
           ; s3Bucket    = project ^. Project.s3Bucket
           ; s3KeyPrefix = project ^. Project.s3KeyPrefix
-          ; tag         = versionToTag version
-          ; s3Key       = s3KeyPrefix ++ artifactFileName project
 
           ; changedFiles _ = ("release aborted. uncommitted changes:\n" ++) .
                              unlines . map show <$>
@@ -78,11 +75,6 @@ release project dir dryRun =
               return $ "mismatched project versions: " ++
                      showVersion version ++ " vs. " ++
                      showVersion projectVersion
-
-          ; tagAlreadyExists _ =
-              return $ "tag " ++ tag ++ " already exists"
-
-          ; artifactPath = dir </> artifactFileName project
 
           ; deployWarToS3 = undefined
           }

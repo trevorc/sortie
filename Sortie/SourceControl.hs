@@ -13,28 +13,32 @@
 
 module Sortie.SourceControl
     ( FileStatus(..)
+    , ensureTagForHEAD
     , getChangedFiles
     , hasUncommittedChanges
     , isWorkingTreeDirty
     , showFileStatus
-    , createTag
+    , tagVersion
     , listTags
     , versionToTag
     )
 where
 
-import Control.Applicative          ((<$>))
-import Data.Functor                 ((<$))
-import Data.Maybe                   (mapMaybe)
+import Control.Applicative          ((<$>), (<*>))
+import Control.Monad                (unless)
+import Data.Maybe                   (listToMaybe, mapMaybe)
 import Data.Version                 (showVersion)
+import Distribution.Verbosity       (Verbosity)
 import Distribution.Version         (Version)
 import System.Exit                  (ExitCode(..))
 import Text.ParserCombinators.ReadP (get, readP_to_S)
 import Text.Printf                  (printf)
 import Text.Regex.PCRE              ((=~))
 
-import Sortie.Utils                 (readMaybe, readCommand, readCommand_,
-                                     runProcessSilently)
+import Sortie.Utils
+    ( die, readMaybe
+    , readCommand, readCommand_, runProcessSilently
+    )
 
 data FileStatus
     = New
@@ -64,6 +68,9 @@ data FileChange = FileChange
     }
 
 instance Show FileChange where show = showFileChange
+
+newtype Revision = Revision String
+    deriving Eq
 
 showFileStatus :: FileStatus -> String
 showFileStatus New        = "N"
@@ -103,9 +110,37 @@ getChangedFiles = mapMaybe processDiffLine . lines <$>
 versionToTag :: Version -> String
 versionToTag = ('v':) . showVersion
 
-createTag :: Version -> IO String
-createTag version = tag <$ readCommand_ "git" ["tag", tag, "HEAD"]
+tagVersion :: Version -> IO ()
+tagVersion version = readCommand_  "git" ["tag", tag, "HEAD"]
     where tag = versionToTag version
 
 listTags :: IO [String]
 listTags = lines <$> readCommand "git" ["tag", "-l"]
+
+parseRev :: String -> IO Revision
+parseRev treeish = readCommand "git" ["rev-parse", treeish] >>=
+                   maybe (die $ "rev-parse failed for " ++ treeish)
+                         (return . Revision) .
+                   listToMaybe . lines
+
+headRevision :: IO Revision
+headRevision = parseRev "HEAD"
+
+ensureTagForHEAD :: Verbosity   -- | Log at this verbosity.
+                 -> Bool        -- | Dry run -- perform no action.
+                 -> Version     -- | Version to create tag for.
+                 -> IO ()
+ensureTagForHEAD _verbosity dryRun version =
+    do { tagExists <- elem tagName <$> listTags
+       ; if tagExists then ensureIsHEAD else createTag
+       }
+    where { tagName = versionToTag version
+          ; ensureIsHEAD = do
+              { isHead <- (==) <$> headRevision <*> parseRev tagName
+              ; unless isHead $
+                       die $ printf "tag %s already exists \
+                                    \and does not point to HEAD" tagName
+              }
+          ; createTag = putStrLn ("creating tag " ++ tagName) >>
+                        unless dryRun (tagVersion version)
+          }

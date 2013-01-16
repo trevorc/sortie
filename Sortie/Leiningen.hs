@@ -12,6 +12,7 @@
 
 module Sortie.Leiningen
     ( artifactFileName
+    , createArtifact
     , getProjectName
     , getProjectVersion
     , leinDo
@@ -19,10 +20,13 @@ module Sortie.Leiningen
 where
 
 import Control.Lens              (view)
+import Control.Monad             (unless)
 import Data.Maybe                (listToMaybe, mapMaybe)
 import Data.Version              (Version(..), parseVersion, showVersion)
 import Distribution.Package      (PackageName(PackageName))
 import Distribution.Simple.Utils (withFileContents)
+import Distribution.Verbosity    (Verbosity)
+import System.Directory          (doesFileExist)
 import System.FilePath           ((</>))
 import Text.Printf               (printf)
 import Text.Regex.PCRE           ((=~))
@@ -80,3 +84,19 @@ mapLast f (x:xs) = x : mapLast f xs
 leinDo :: [LeiningenCommand] -> IO ()
 leinDo commands = readCommand_ "lein" $ "do" : concat (joinCommands commands)
     where joinCommands = mapButLast (mapLast (++ ","))
+
+assertM :: IO Bool -> String -> IO ()
+assertM m e = m >>= (`unless` die e)
+
+createArtifact :: Verbosity -> Bool -> FilePath -> Project -> IO FilePath
+createArtifact _verbosity dryRun projectDir project =
+    do { putStrLn $ "creating artifact " ++ artifactPath
+       ; unless dryRun $
+                leinDo [["clean"], ["ring", "uberwar", fileName]] >>
+                assertM (doesFileExist artifactPath)
+                            ("failed to create artifact at " ++ artifactPath)
+       ; return artifactPath
+       }
+    where { artifactPath = projectDir </> "target" </> fileName
+          ; fileName = artifactFileName project
+          }

@@ -14,11 +14,13 @@ Executable sortie
                  filepath,
                  lens,
                  monad-loops,
+                 old-locale,
                  pretty,
                  process,
                  regex-base,
                  regex-pcre,
-                 split
-  GHC-Options: -Wall -O2
+                 split,
+                 time
+  GHC-Options: -Wall -Werror -O2
   if !os(darwin)
      LD-Options: -static
