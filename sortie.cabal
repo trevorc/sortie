@@ -8,19 +8,20 @@ Executable sortie
   Main-Is: Main.hs
   Default-Language: Haskell2010
   Build-Depends: base,
+                 bytestring,
                  Cabal >= 1.10,
                  containers,
                  directory,
                  filepath,
+                 hS3,
                  lens,
                  monad-loops,
-                 old-locale,
                  pretty,
                  process,
                  regex-base,
                  regex-pcre,
                  split,
-                 time
+                 unix
   GHC-Options: -Wall -Werror -O2
   if !os(darwin)
      LD-Options: -static

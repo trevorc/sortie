@@ -36,9 +36,9 @@ import Text.Printf                  (printf)
 import Text.Regex.PCRE              ((=~))
 
 import Sortie.Utils
-    ( die, readMaybe
-    , readCommand, readCommand_, runProcessSilently
-    )
+    ( die, notice
+    , readMaybe
+    , readCommand, readCommand_, runProcessSilently )
 
 data FileStatus
     = New
@@ -111,7 +111,7 @@ versionToTag :: Version -> String
 versionToTag = ('v':) . showVersion
 
 tagVersion :: Version -> IO ()
-tagVersion version = readCommand_  "git" ["tag", tag, "HEAD"]
+tagVersion version = readCommand_ "git" ["tag", tag, "HEAD"]
     where tag = versionToTag version
 
 listTags :: IO [String]
@@ -130,7 +130,7 @@ ensureTagForHEAD :: Verbosity   -- | Log at this verbosity.
                  -> Bool        -- | Dry run -- perform no action.
                  -> Version     -- | Version to create tag for.
                  -> IO ()
-ensureTagForHEAD _verbosity dryRun version =
+ensureTagForHEAD verbosity dryRun version =
     do { tagExists <- elem tagName <$> listTags
        ; if tagExists then ensureIsHEAD else createTag
        }
@@ -141,6 +141,9 @@ ensureTagForHEAD _verbosity dryRun version =
                        die $ printf "tag %s already exists \
                                     \and does not point to HEAD" tagName
               }
-          ; createTag = putStrLn ("creating tag " ++ tagName) >>
-                        unless dryRun (tagVersion version)
+          ; createTag = do { notice verbosity $ "creating tag " ++
+                                    tagName ++ "..."
+                           ; unless dryRun $ tagVersion version
+                           ; notice verbosity "done.\n"
+                           }
           }

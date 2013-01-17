@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Sortie.Command.Release
@@ -17,13 +18,12 @@ where
 import Control.Applicative     ((<$>))
 import Control.Lens            ((^.))
 import Control.Monad           (when)
+import Data.Maybe              (isJust)
 import Data.Version            (showVersion)
-import System.Exit             (exitSuccess)
-import System.FilePath         ((</>), takeFileName)
 
+import Sortie.Context          (Context(..))
 import Sortie.Leiningen        (createArtifact)
-import Sortie.Project          (Project)
-import Sortie.Utils            (die)
+import Sortie.Utils            (die, warFileType)
 import Sortie.SourceControl
     ( hasUncommittedChanges, getChangedFiles
     , ensureTagForHEAD )
@@ -31,31 +31,27 @@ import qualified Sortie.Project as Project
     ( name, version, s3Bucket, s3KeyPrefix )
 import qualified Sortie.Leiningen as Lein
     ( getProjectName, getProjectVersion )
+import qualified Sortie.S3 as S3
+    ( Bucket(Bucket), connection, putFile )
 
 dieUnless :: (a -> Bool) -> (a -> IO String) -> a -> IO ()
 dieUnless p msg x | p x       = return ()
                   | otherwise = msg x >>= die
 
-release :: Project       -- | The project data structure.
-        -> FilePath      -- | The project directory containing
-                         --   a project.clj and the target
-                         --   subdirectory.
-        -> Bool          -- | Dry run: perform no action, just show
-                         --   what would be done.
+release :: Context          -- | Project execution context.
+        -> Bool             -- | Dry run: perform no action, just show
+                            --   what would be done.
         -> IO ()
-release project dir dryRun =
+release Context{..} dryRun =
     do { when dryRun $ putStrLn "** DRY RUN **"
-       ; dieUnless not           changedFiles     =<< hasUncommittedChanges
-       ; dieUnless (== name)     nameMismatch     =<< Lein.getProjectName dir
-       ; dieUnless (== version)  versionMismatch  =<< Lein.getProjectVersion dir
-       ; ensureTagForHEAD undefined dryRun version
-       ; artifactPath <- createArtifact undefined dryRun dir project
-       ; when dryRun $ do { putStrLn $ "put artifact to s3://" ++
-                                     s3Bucket ++ s3KeyPrefix </>
-                                     takeFileName artifactPath
-                          ; exitSuccess
-                          }
-       ; deployWarToS3
+       ; dieUnless not          changedFiles    =<< hasUncommittedChanges
+       ; dieUnless (== name)    nameMismatch    =<< Lein.getProjectName projectDirectory
+       ; dieUnless (== version) versionMismatch =<< Lein.getProjectVersion projectDirectory
+       ; dieUnless isJust       missingS3Env    =<< S3.connection
+       ; ensureTagForHEAD verbosity dryRun version
+       ; createArtifact verbosity dryRun projectDirectory project >>=
+         S3.putFile verbosity dryRun
+               (S3.Bucket s3Bucket) s3KeyPrefix warFileType
        }
     where { name        = project ^. Project.name
           ; version     = project ^. Project.version
@@ -76,5 +72,7 @@ release project dir dryRun =
                      showVersion version ++ " vs. " ++
                      showVersion projectVersion
 
-          ; deployWarToS3 = undefined
+          ; missingS3Env = const . return $
+                           "missing either AWS_ACCESS_KEY_ID or " ++
+                           "AWS_SECRET_ACCESS_KEY environment variables"
           }

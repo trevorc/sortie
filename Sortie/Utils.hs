@@ -12,7 +12,9 @@
 -----------------------------------------------------------------------------
 
 module Sortie.Utils
-    ( die
+    ( MimeType(..)
+    , Verbosity
+    , die
     , dieWithLocation
     , info
     , notice
@@ -21,6 +23,7 @@ module Sortie.Utils
     , readCommand
     , readCommand_
     , runProcessSilently
+    , warFileType
     )
 where
 
@@ -29,25 +32,27 @@ import Control.Lens              (_4, view)
 import Data.List                 (find)
 import Control.Monad             (when, void)
 import Data.Foldable             (Foldable(..))
-import Data.Time                 (formatTime, getCurrentTime)
 import Data.Traversable          (Traversable(..))
 import Distribution.Simple.Utils (die, dieWithLocation, rawSystemStdout)
 import Distribution.Verbosity    (Verbosity, normal, verbose)
-import System.IO                 (IOMode(..), hPutStrLn, stderr, withFile)
+import System.IO                 (IOMode(..), hPutStr, hFlush, stderr, withFile)
 import System.Exit               (ExitCode(..))
-import System.Locale             (defaultTimeLocale)
 import System.Process            (CreateProcess(..), StdStream(UseHandle),
                                   createProcess, proc, waitForProcess)
-import Text.Printf               (printf)
 
 instance Foldable    ((,) a) where foldMap f         = snd . fmap f
 instance Traversable ((,) a) where traverse f (x, y) = ((,) x) <$> f y
 
+newtype MimeType = MimeType String
+
+warFileType :: MimeType
+warFileType = MimeType "application/zip"
+
 emitLog :: Verbosity -> Verbosity -> String -> IO ()
 emitLog minVerbosity verbosity msg =
     when (verbosity >= minVerbosity) $ do
-      { timestamp <- formatTime defaultTimeLocale "%FT%T%z" <$> getCurrentTime
-      ; hPutStrLn stderr $ printf "%s %s" timestamp msg
+      { hPutStr stderr msg
+      ; hFlush stderr
       }
 
 notice :: Verbosity -> String -> IO ()
