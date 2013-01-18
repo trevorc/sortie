@@ -26,9 +26,10 @@ module Sortie.Command
     )
 where
 
-import Distribution.Simple.Command (CommandUI(..), option)
-import Distribution.Simple.Setup   (Flag(..), trueArg)
-import Distribution.Verbosity      (normal)
+import Control.Applicative         ((<$>))
+import Distribution.Simple.Command (CommandUI(..), option, optArg)
+import Distribution.Simple.Setup   (Flag(..), flagToList, trueArg)
+import Distribution.Verbosity      (flagToVerbosity, verbose)
 import Text.Printf                 (printf)
 import qualified Distribution.Simple.Command as Simple (Command)
 import Sortie.Context              (Context, GlobalFlags(..))
@@ -43,7 +44,7 @@ defaultGlobalFlags :: GlobalFlags
 defaultGlobalFlags
     = GlobalFlags {
         globalVersion   = Flag False
-      , globalVerbosity = Flag normal
+      , globalVerbosity = Flag verbose
       , globalDryRun    = Flag False
       }
 
@@ -60,11 +61,16 @@ globalCommand
       , commandDefaultFlags = defaultGlobalFlags
       , commandOptions =
           const [ option "V" ["version"]
-                  "Show version information"
+                  "Show version information."
                   globalVersion (\v flags -> flags { globalVersion = v })
                   trueArg
+                , option "v" ["verbose"]
+                  "Configure verbosity from 0 (silent) to 3 (deafening)"
+                  globalVerbosity (\v flags -> flags { globalVerbosity = v })
+                  (optArg "n" (Flag <$> flagToVerbosity) (Flag verbose)
+                              (fmap (Just . show) . flagToList))
                 , option "n" ["dry-run"]
-                  "perform no action; only show what would be done"
+                  "Perform no action; only show what would be done."
                   globalDryRun (\v flags -> flags { globalDryRun = v })
                   trueArg
                 ]
