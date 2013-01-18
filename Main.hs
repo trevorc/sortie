@@ -21,11 +21,12 @@ where
 import Control.Applicative         (Applicative(..), (<$>))
 import Control.Lens                ((^.))
 import Control.Monad               (unless, when)
-import Data.Char (toLower)
-import Data.List                   ((\\))
+import Data.Char                   (toLower)
+import Data.Functor                ((<$))
+import Data.List                   ((\\), intercalate)
 import Data.Maybe                  (mapMaybe)
 import Distribution.Simple.Setup   (fromFlag)
-import Distribution.Simple.Utils   (die, topHandler)
+import Distribution.Simple.Utils   (die, notice, topHandler)
 import Distribution.Text           (display)
 import System.Environment          (getArgs, getProgName)
 import System.IO                   (hPutStr, stderr)
@@ -63,7 +64,7 @@ releaseAction _flags args ctx =
 deployAction :: Action DeployFlags
 deployAction DeployFlags{..} envs ctx@Context{project} =
     do { unless (null unknownEnvs) $ die $
-                    "unrecognized environments " ++ unwords unknownEnvs
+                    "unrecognized environments " ++ intercalate ", " unknownEnvs
        ; mapM_ (deploy ctx) $ mapMaybe (`Map.lookup` projectEnvs) targetEnvs
        }
     where { projectEnvs = project ^. Project.environments
@@ -98,7 +99,9 @@ run args =
           ; CommandHelp      help      -> printCommandHelp help
           ; CommandList      opts      -> printOptionsList opts
           ; CommandErrors    errs      -> printErrors errs
-          ; CommandReadyToGo action    -> setupContext fl >>= action
+          ; CommandReadyToGo action    -> printDryRun <$>
+                                          setupContext fl >>=
+                                          action
           }
       }
     where { pr                    = hPutStr stderr
@@ -110,6 +113,8 @@ run args =
                                        ; pr $ printf "%s version %s\n"
                                             prog (display Paths_sortie.version)
                                        }
+          ; printDryRun ctx@Context{dryRun, verbosity}
+              = ctx <$ when dryRun $ notice verbosity "** DRY RUN **"
           ; setupContext GlobalFlags{..}
               = Context <$>
                 findProjectDirectory <*>

@@ -17,7 +17,6 @@ where
 
 import Control.Applicative     ((<$>))
 import Control.Lens            ((^.))
-import Control.Monad           (when)
 import Data.Maybe              (isJust)
 import Data.Version            (showVersion)
 
@@ -41,8 +40,7 @@ dieUnless p msg x | p x       = return ()
 release :: Context          -- | Project execution context.
         -> IO ()
 release Context{..} =
-    do { when dryRun $ putStrLn "** DRY RUN **"
-       ; dieUnless not          changedFiles    =<< hasUncommittedChanges
+    do { dieUnless not          changedFiles    =<< hasUncommittedChanges
        ; dieUnless (== name)    nameMismatch    =<< Lein.getProjectName projectDirectory
        ; dieUnless (== version) versionMismatch =<< Lein.getProjectVersion projectDirectory
        ; dieUnless isJust       missingS3Env    =<< S3.connection
