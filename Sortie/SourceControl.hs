@@ -134,16 +134,16 @@ ensureTagForHEAD verbosity dryRun version =
     do { tagExists <- elem tagName <$> listTags
        ; if tagExists then ensureIsHEAD else createTag
        }
-    where { tagName = versionToTag version
-          ; ensureIsHEAD = do
+    where { ensureIsHEAD = do
               { isHead <- (==) <$> headRevision <*> parseRev tagName
-              ; unless isHead $
-                       die $ printf "tag %s already exists \
-                                    \and does not point to HEAD" tagName
+              ; unless isHead $ die $ printf "tag %s already exists \
+                                             \and does not point to HEAD" tagName
               }
-          ; createTag = do { notice verbosity $ "creating tag " ++
-                                    tagName ++ "..."
-                           ; unless dryRun $ tagVersion version
-                           ; notice verbosity "done.\n"
-                           }
+          ; createTag = do
+              { notice verbosity $ "creating tag " ++
+                       tagName ++ "..."
+              ; unless dryRun $ tagVersion version
+              ; notice verbosity "done.\n"
+              }
+          ; tagName = versionToTag version
           }

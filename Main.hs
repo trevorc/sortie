@@ -36,10 +36,9 @@ import Sortie.Command
     , ShowFlags(..),    showCommand
     )
 import Sortie.Command.Release      (release)
-import Sortie.Context              (Context(Context))
+import Sortie.Context              (Context(..))
 import Sortie.Project.Parse
     ( findAndParseProjectFile, findProjectDirectory, showProject )
-import qualified Sortie.Context as Context (projectDirectory, project, verbosity)
 import qualified Paths_sortie (version)
 
 guardNoExtraArgs :: String -> [String] -> IO ()
@@ -49,9 +48,9 @@ guardNoExtraArgs name args =
              "positional arguments: " ++ unwords args
 
 releaseAction :: Action ReleaseFlags
-releaseAction (ReleaseFlags dryRun) args ctx =
+releaseAction _flags args ctx =
     guardNoExtraArgs "release" args >>
-    release ctx (fromFlag dryRun)
+    release ctx
 
 deployAction :: Action DeployFlags
 deployAction = undefined
@@ -85,7 +84,8 @@ run args =
           ; CommandReadyToGo action    -> setupContext fl >>= action
           }
       }
-    where { pr = hPutStr stderr
+    where { pr                    = hPutStr stderr
+          ; liftFlag              = pure . fromFlag
           ; printCommandHelp help = getProgName >>= pr . help
           ; printOptionsList      = pr . unlines
           ; printErrors           = die . unlines
@@ -93,10 +93,12 @@ run args =
                                        ; pr $ printf "%s version %s\n"
                                             prog (display Paths_sortie.version)
                                        }
-          ; setupContext flags    = Context <$>
-                                    findProjectDirectory <*>
-                                    findAndParseProjectFile <*>
-                                    (pure . fromFlag $ globalVerbosity flags)
+          ; setupContext GlobalFlags{..}
+              = Context <$>
+                findProjectDirectory <*>
+                findAndParseProjectFile <*>
+                liftFlag globalVerbosity <*>
+                liftFlag globalDryRun
           }
 
 main :: IO ()

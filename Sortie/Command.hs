@@ -44,6 +44,7 @@ defaultGlobalFlags
     = GlobalFlags {
         globalVersion   = Flag False
       , globalVerbosity = Flag normal
+      , globalDryRun    = Flag False
       }
 
 globalCommand :: CommandUI GlobalFlags
@@ -62,11 +63,14 @@ globalCommand
                   "Show version information"
                   globalVersion (\v flags -> flags { globalVersion = v })
                   trueArg
+                , option "n" ["dry-run"]
+                  "perform no action; only show what would be done"
+                  globalDryRun (\v flags -> flags { globalDryRun = v })
+                  trueArg
                 ]
       }
 
-newtype ReleaseFlags = ReleaseFlags
-    { getReleaseFlags :: Flag Bool }
+newtype ReleaseFlags = ReleaseFlags ()
 
 releaseCommand :: CommandUI ReleaseFlags
 releaseCommand
@@ -74,17 +78,12 @@ releaseCommand
         commandName         = "release"
       , commandSynopsis     = "Cuts a new tagged release."
       , commandUsage        = noArgsUsage "release"
-      , commandDefaultFlags = ReleaseFlags (Flag False)
+      , commandDefaultFlags = ReleaseFlags ()
       , commandDescription  =
           Just . const $
                    "Tags HEAD with the project version; creates " ++
                    "the deployment artifact; uploads the deployment artifact.\n"
-      , commandOptions =
-          const [ option "n" ["dry-run"]
-                  "perform no action; only show what would be done"
-                  getReleaseFlags (const . ReleaseFlags)
-                  trueArg
-                ]
+      , commandOptions = const []
       }
 
 newtype DeployFlags = DeployFlags ()

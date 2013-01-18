@@ -24,10 +24,12 @@ import Sortie.Project              (Project)
 data GlobalFlags = GlobalFlags
     { globalVersion   :: Flag Bool
     , globalVerbosity :: Flag Verbosity
+    , globalDryRun    :: Flag Bool
     }
 
 data Context = Context
     { projectDirectory :: FilePath
     , project          :: Project
     , verbosity        :: Verbosity
+    , dryRun           :: Bool
     }

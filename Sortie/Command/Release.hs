@@ -39,10 +39,8 @@ dieUnless p msg x | p x       = return ()
                   | otherwise = msg x >>= die
 
 release :: Context          -- | Project execution context.
-        -> Bool             -- | Dry run: perform no action, just show
-                            --   what would be done.
         -> IO ()
-release Context{..} dryRun =
+release Context{..} =
     do { when dryRun $ putStrLn "** DRY RUN **"
        ; dieUnless not          changedFiles    =<< hasUncommittedChanges
        ; dieUnless (== name)    nameMismatch    =<< Lein.getProjectName projectDirectory
