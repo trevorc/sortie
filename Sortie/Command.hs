@@ -27,9 +27,12 @@ module Sortie.Command
 where
 
 import Control.Applicative         ((<$>))
-import Distribution.Simple.Command (CommandUI(..), option, optArg)
+import Distribution.ReadE          (readP_to_E)
+import Distribution.Simple.Command (CommandUI(..), option, optArg, reqArg)
 import Distribution.Simple.Setup   (Flag(..), flagToList, trueArg)
+import Distribution.Text           (display, parse)
 import Distribution.Verbosity      (flagToVerbosity, verbose)
+import Distribution.Version        (Version)
 import Text.Printf                 (printf)
 import qualified Distribution.Simple.Command as Simple (Command)
 import Sortie.Context              (Context, GlobalFlags(..))
@@ -67,8 +70,9 @@ globalCommand
                 , option "v" ["verbose"]
                   "Configure verbosity from 0 (silent) to 3 (deafening)"
                   globalVerbosity (\v flags -> flags { globalVerbosity = v })
-                  (optArg "n" (Flag <$> flagToVerbosity) (Flag verbose)
-                              (fmap (Just . show) . flagToList))
+                  (optArg "N" (Flag <$> flagToVerbosity)
+                              (Flag verbose)
+                              (map (Just . show) . flagToList))
                 , option "n" ["dry-run"]
                   "Perform no action; only show what would be done."
                   globalDryRun (\v flags -> flags { globalDryRun = v })
@@ -92,7 +96,8 @@ releaseCommand
       , commandOptions = const []
       }
 
-newtype DeployFlags = DeployFlags ()
+newtype DeployFlags = DeployFlags
+    { deployTag :: Flag Version }
 
 deployCommand :: CommandUI DeployFlags
 deployCommand
@@ -100,12 +105,20 @@ deployCommand
         commandName         = "deploy"
       , commandSynopsis     = "Deploys the project to an environment."
       , commandUsage        = printf "Usage: %s deploy [VERSION] [ENVIRONMENTS]"
-      , commandDefaultFlags = DeployFlags ()
+      , commandDefaultFlags = DeployFlags NoFlag
       , commandDescription  =
           Just . const $
                    "Deploys the specified version, or the version name " ++
                    "in the project file, to the given environment.\n"
-      , commandOptions = const []
+      , commandOptions =
+          const [ option "t" ["tag"]
+                  ("Deploy a tagged version other than the version in " ++
+                   "the project file.")
+                  deployTag (\t _ -> DeployFlags t)
+                  (reqArg "VERSION" (readP_to_E ("Couldn't parse tag version: "++)
+                                                    (Flag <$> parse))
+                   (map display . flagToList))
+                ]
       }
 
 newtype MigrateFlags = MigrateFlags ()
