@@ -21,7 +21,7 @@ where
 
 import Control.Applicative       ((<$>))
 import Control.Lens              (view)
-import Control.Monad             (unless, when)
+import Control.Monad             (unless)
 import Control.Monad.Loops       (allM, andM)
 import Data.Maybe                (listToMaybe, mapMaybe)
 import Data.Version              (Version(..), parseVersion, showVersion)
@@ -111,12 +111,11 @@ createArtifact :: Verbosity -> Bool -> FilePath -> Project -> IO FilePath
 createArtifact verbosity dryRun projectDir project =
     do { notice verbosity $ "creating artifact " ++ artifactPath ++ "..."
        ; upToDate <- isUpToDate artifactPath projectDir
-       ; when upToDate $ notice verbosity "(up-to-date).\n"
        ; unless (dryRun || upToDate) $ do
            { leinDo [["clean"], ["ring", "uberwar", fileName]]
            ; doesFileExist artifactPath `elseM` artifactNotCreated
-           ; notice verbosity "done.\n"
            }
+       ; notice verbosity $ if upToDate then "(up-to-date).\n" else "done.\n"
        ; return artifactPath
        }
     where { artifactPath       = projectDir </> "target" </> fileName
