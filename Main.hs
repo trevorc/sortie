@@ -22,11 +22,10 @@ import Control.Applicative         (Applicative(..), (<$>))
 import Control.Lens                ((^.))
 import Control.Monad               (unless, when)
 import Data.Char                   (toLower)
-import Data.Functor                ((<$))
 import Data.List                   ((\\), intercalate)
 import Data.Maybe                  (mapMaybe)
-import Distribution.Simple.Setup   (fromFlag)
-import Distribution.Simple.Utils   (die, notice, topHandler)
+import Distribution.Simple.Setup   (fromFlag, fromFlagOrDefault)
+import Distribution.Simple.Utils   (die, topHandler)
 import Distribution.Text           (display)
 import System.Environment          (getArgs, getProgName)
 import System.IO                   (hPutStr, stderr)
@@ -46,8 +45,9 @@ import Sortie.Command.Release      (release)
 import Sortie.Context              (Context(..))
 import Sortie.Project.Parse
     ( findAndParseProjectFile, findProjectDirectory, showProject )
+import Sortie.Utils                (notice)
 import qualified Sortie.Project as Project
-    ( environments )
+    ( environments, version )
 import qualified Paths_sortie (version)
 
 guardNoExtraArgs :: String -> [String] -> IO ()
@@ -62,14 +62,18 @@ releaseAction _flags args ctx =
     release ctx
 
 deployAction :: Action DeployFlags
-deployAction DeployFlags{..} envs ctx@Context{project} =
-    do { unless (null unknownEnvs) $ die $
+deployAction DeployFlags{deployTag} envs ctx@Context{project} =
+    do { when (null envs) $ die $ "must specify at least one environment"
+       ; unless (null unknownEnvs) $ die $
                     "unrecognized environments " ++ intercalate ", " unknownEnvs
-       ; mapM_ (deploy ctx) $ mapMaybe (`Map.lookup` projectEnvs) targetEnvs
+       ; mapM_ (deploy ctx version) $
+               mapMaybe (`Map.lookup` projectEnvs) targetEnvs
        }
-    where { projectEnvs = project ^. Project.environments
-          ; targetEnvs = map toLower <$> envs
-          ; unknownEnvs = targetEnvs \\ Map.keys projectEnvs
+    where { projectEnvs    = project ^. Project.environments
+          ; projectVersion = project ^. Project.version
+          ; targetEnvs     = map toLower <$> envs
+          ; unknownEnvs    = targetEnvs \\ Map.keys projectEnvs
+          ; version        = fromFlagOrDefault projectVersion deployTag
           }
 
 migrateAction :: Action MigrateFlags
@@ -99,9 +103,9 @@ run args =
           ; CommandHelp      help      -> printCommandHelp help
           ; CommandList      opts      -> printOptionsList opts
           ; CommandErrors    errs      -> printErrors errs
-          ; CommandReadyToGo action    -> printDryRun <$>
-                                          setupContext fl >>=
-                                          action
+          ; CommandReadyToGo action    -> do { ctx <- setupContext fl
+                                             ; printDryRun ctx
+                                             ; action ctx }
           }
       }
     where { pr                    = hPutStr stderr
@@ -111,11 +115,10 @@ run args =
           ; printErrors           = die . unlines
           ; printVersion          = do { prog <- getProgName
                                        ; pr $ printf "%s version %s\n"
-                                            prog (display Paths_sortie.version)
-                                       }
-          ; printDryRun ctx@Context{dryRun, verbosity}
-              = ctx <$ when dryRun $ notice verbosity "** DRY RUN **"
-          ; setupContext GlobalFlags{..}
+                                            prog (display Paths_sortie.version) }
+          ; printDryRun Context{dryRun, verbosity}
+              = when dryRun $ notice verbosity "** DRY RUN **\n"
+          ; setupContext GlobalFlags{globalVerbosity, globalDryRun}
               = Context <$>
                 findProjectDirectory <*>
                 findAndParseProjectFile <*>

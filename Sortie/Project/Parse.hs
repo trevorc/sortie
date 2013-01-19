@@ -57,7 +57,7 @@ projectDescriptionFields =
       (view Project.version)      (set Project.version)
     , simpleField "repository"    showFreeText parseFreeText
       (view Project.repository)   (set Project.repository)
-    , simpleField "s3-bucket"     showToken parseTokenQ
+    , simpleField "s3-bucket"     disp parse
       (view Project.s3Bucket)     (set Project.s3Bucket)
     , simpleField "s3-key-prefix" showFilePath parseFilePathQ
       (view Project.s3KeyPrefix)  (set Project.s3KeyPrefix)

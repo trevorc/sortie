@@ -36,7 +36,7 @@ import Text.Regex.PCRE           ((=~))
 import Text.ParserCombinators.ReadP (readP_to_S)
 
 import Sortie.Project            (Project)
-import Sortie.Utils              (die, notice, parseMaybe, readCommand_)
+import Sortie.Utils              (die, elseM, notice, parseMaybe, readCommand_)
 import qualified Sortie.Project as Project
 
 type LeiningenCommand = [String]
@@ -101,11 +101,6 @@ mapLast f (x:xs) = x : mapLast f xs
 leinDo :: [LeiningenCommand] -> IO ()
 leinDo commands = readCommand_ "lein" $ "do" : concat (joinCommands commands)
     where joinCommands = mapButLast (mapLast (++ ","))
-
-infixl 1 `elseM`
-
-elseM :: Monad m => m Bool -> m () -> m ()
-c `elseM` m = c >>= flip unless m
 
 createArtifact :: Verbosity -> Bool -> FilePath -> Project -> IO FilePath
 createArtifact verbosity dryRun projectDir project =

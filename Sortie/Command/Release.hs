@@ -31,7 +31,7 @@ import qualified Sortie.Project as Project
 import qualified Sortie.Leiningen as Lein
     ( getProjectName, getProjectVersion )
 import qualified Sortie.S3 as S3
-    ( Bucket(Bucket), connection, putFile )
+    ( connection, putFile )
 
 dieUnless :: (a -> Bool) -> (a -> IO String) -> a -> IO ()
 dieUnless p msg x | p x       = return ()
@@ -46,8 +46,7 @@ release Context{..} =
        ; dieUnless isJust       missingS3Env    =<< S3.connection
        ; ensureTagForHEAD verbosity dryRun version
        ; createArtifact verbosity dryRun projectDirectory project >>=
-         S3.putFile verbosity dryRun
-               (S3.Bucket s3Bucket) s3KeyPrefix warFileType
+         S3.putFile verbosity dryRun s3Bucket s3KeyPrefix warFileType
        }
     where { name        = project ^. Project.name
           ; version     = project ^. Project.version

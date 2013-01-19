@@ -11,7 +11,8 @@
 -----------------------------------------------------------------------------
 
 module Sortie.Project
-    ( Environment
+    ( Bucket(..)
+    , Environment
     , Project
     , host
     , user
@@ -30,10 +31,11 @@ module Sortie.Project
     )
 where
 
-import Sortie.Project.Type
 import Distribution.Package    (PackageName(PackageName))
 import Distribution.Version    (Version(Version))
 import qualified Data.Map as Map
+
+import Sortie.Project.Type
 
 emptyEnvironment :: Environment
 emptyEnvironment
@@ -52,7 +54,7 @@ emptyProject
        { _name         = PackageName ""
        , _version      = Version [] []
        , _repository   = ""
-       , _s3Bucket     = ""
+       , _s3Bucket     = Bucket ""
        , _s3KeyPrefix  = ""
        , _environments = Map.empty
        }

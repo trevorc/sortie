@@ -35,6 +35,7 @@ import Distribution.Verbosity      (flagToVerbosity, verbose)
 import Distribution.Version        (Version)
 import Text.Printf                 (printf)
 import qualified Distribution.Simple.Command as Simple (Command)
+
 import Sortie.Context              (Context, GlobalFlags(..))
 
 type Action flags = flags -> [String] -> Context -> IO ()
@@ -104,12 +105,12 @@ deployCommand
     = CommandUI {
         commandName         = "deploy"
       , commandSynopsis     = "Deploys the project to an environment."
-      , commandUsage        = printf "Usage: %s deploy [VERSION] [ENVIRONMENTS]"
+      , commandUsage        = printf "Usage: %s deploy ENVIRONMENT..."
       , commandDefaultFlags = DeployFlags NoFlag
       , commandDescription  =
           Just . const $
                    "Deploys the specified version, or the version name " ++
-                   "in the project file, to the given environment.\n"
+                   "in the project file, to the given environments.\n"
       , commandOptions =
           const [ option "t" ["tag"]
                   ("Deploy a tagged version other than the version in " ++

@@ -16,6 +16,7 @@ module Sortie.Utils
     , Verbosity
     , die
     , dieWithLocation
+    , elseM
     , info
     , notice
     , parseMaybe
@@ -29,14 +30,14 @@ where
 
 import Control.Applicative       ((<$>))
 import Control.Lens              (_4, view)
-import Data.List                 (find)
-import Control.Monad             (when, void)
+import Control.Monad             (when, unless, void)
 import Data.Foldable             (Foldable(..))
+import Data.List                 (find)
 import Data.Traversable          (Traversable(..))
 import Distribution.Simple.Utils (die, dieWithLocation, rawSystemStdout)
 import Distribution.Verbosity    (Verbosity, normal, verbose)
-import System.IO                 (IOMode(..), hPutStr, hFlush, stderr, withFile)
 import System.Exit               (ExitCode(..))
+import System.IO                 (IOMode(..), hPutStr, hFlush, stderr, withFile)
 import System.Process            (CreateProcess(..), StdStream(UseHandle),
                                   createProcess, proc, waitForProcess)
 
@@ -44,6 +45,11 @@ instance Foldable    ((,) a) where foldMap f         = snd . fmap f
 instance Traversable ((,) a) where traverse f (x, y) = ((,) x) <$> f y
 
 newtype MimeType = MimeType String
+
+infixl 1 `elseM`
+
+elseM :: Monad m => m Bool -> m () -> m ()
+c `elseM` m = c >>= flip unless m
 
 warFileType :: MimeType
 warFileType = MimeType "application/zip"

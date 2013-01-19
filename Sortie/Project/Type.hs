@@ -12,7 +12,8 @@
 -----------------------------------------------------------------------------
 
 module Sortie.Project.Type
-    ( Environment(..)
+    ( Bucket(..)
+    , Environment(..)
     , Project(..)
     , host
     , user
@@ -29,10 +30,20 @@ module Sortie.Project.Type
     )
 where
 
+import Control.Applicative     ((<$>))
 import Control.Lens            (makeLenses)
 import Data.Map                (Map)
 import Distribution.Package    (PackageName)
+import Distribution.ParseUtils   (parseTokenQ, showToken)
+import Distribution.Text       (Text(..))
 import Distribution.Version    (Version)
+
+newtype Bucket = Bucket String
+    deriving Eq
+
+instance Text Bucket where
+    parse = Bucket <$> parseTokenQ
+    disp (Bucket b) = showToken b
 
 data Environment = Environment
      { _host             :: String
@@ -41,16 +52,16 @@ data Environment = Environment
      , _databaseUser     :: String
      , _databasePassword :: String
      , _installScript    :: String
-     } deriving (Show, Eq)
+     } deriving Eq
 
 data Project = Project
     { _name         :: PackageName
     , _version      :: Version
     , _repository   :: String
-    , _s3Bucket     :: String
+    , _s3Bucket     :: Bucket
     , _s3KeyPrefix  :: String
     , _environments :: Map String Environment
-    } deriving (Show, Eq)
+    } deriving Eq
 
 makeLenses ''Environment
 makeLenses ''Project
