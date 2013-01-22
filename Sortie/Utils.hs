@@ -18,6 +18,7 @@ module Sortie.Utils
     , die
     , dieWithLocation
     , elseM
+    , getPackageName
     , info
     , notice
     , parseMaybe
@@ -26,6 +27,9 @@ module Sortie.Utils
     , readCommand_
     , runProcessSilently
     , warFileType
+    , warn
+    , withFileContents
+    , writeCommand
     )
 where
 
@@ -35,7 +39,11 @@ import Control.Monad             (when, unless, void)
 import Data.Foldable             (Foldable(..))
 import Data.List                 (find)
 import Data.Traversable          (Traversable(..))
-import Distribution.Simple.Utils (die, dieWithLocation, rawSystemStdout)
+import Distribution.Package      (PackageName(PackageName))
+import Distribution.Simple.Utils
+    ( die, dieWithLocation, warn
+    , rawSystemStdInOut, rawSystemStdout
+    , withUTF8FileContents )
 import Distribution.Verbosity    (Verbosity, normal, verbose)
 import System.Exit               (ExitCode(..))
 import System.IO                 (IOMode(..), hPutStr, hFlush, stderr, withFile)
@@ -96,3 +104,20 @@ readCommand = rawSystemStdout normal
 
 readCommand_ :: FilePath -> [String] -> IO ()
 readCommand_ = (void .) . readCommand
+
+writeCommand :: Verbosity
+             -> FilePath -> [String]
+             -> String
+             -> IO ()
+writeCommand verbosity cmd args input =
+    do { (_, errors, status) <- rawSystemStdInOut verbosity cmd args
+                                (Just (input, True)) True
+       ; unless (status == ExitSuccess) $ die errors
+       }
+
+
+getPackageName :: PackageName -> String
+getPackageName (PackageName name) = name
+
+withFileContents :: FilePath -> (String -> IO a) -> IO a
+withFileContents = withUTF8FileContents

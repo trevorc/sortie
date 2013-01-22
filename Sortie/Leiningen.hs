@@ -35,7 +35,9 @@ import Text.Printf               (printf)
 import Text.ParserCombinators.ReadP (readP_to_S)
 
 import Sortie.Project            (Project)
-import Sortie.Utils              ((=~), die, elseM, notice, parseMaybe, readCommand_)
+import Sortie.Utils
+    ( (=~), die, elseM, getPackageName
+    , notice, parseMaybe, readCommand_ )
 import qualified Sortie.Project as Project
 
 type LeiningenCommand = [String]
@@ -44,7 +46,6 @@ artifactFileName :: Project -> FilePath
 artifactFileName project = printf "%s-%s.war"
                            (getPackageName . view Project.name $ project)
                            (showVersion . view Project.version $ project)
-    where getPackageName (PackageName name) = name
 
 projectFileName :: FilePath
 projectFileName = "project.clj"

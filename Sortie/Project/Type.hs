@@ -20,6 +20,7 @@ module Sortie.Project.Type
     , databaseName
     , databaseUser
     , databasePassword
+    , fromBucket
     , installScript
     , name
     , version
@@ -34,7 +35,7 @@ import Control.Applicative     ((<$>))
 import Control.Lens            (makeLenses)
 import Data.Map                (Map)
 import Distribution.Package    (PackageName)
-import Distribution.ParseUtils   (parseTokenQ, showToken)
+import Distribution.ParseUtils (parseTokenQ, showToken)
 import Distribution.Text       (Text(..))
 import Distribution.Version    (Version)
 
@@ -44,6 +45,9 @@ newtype Bucket = Bucket String
 instance Text Bucket where
     parse = Bucket <$> parseTokenQ
     disp (Bucket b) = showToken b
+
+fromBucket :: Bucket -> String
+fromBucket (Bucket b) = b
 
 data Environment = Environment
      { _host             :: String

@@ -32,7 +32,6 @@ import Distribution.ParseUtils
     , parseTokenQ, ppFields, showFilePath, showFreeText
     , showPWarning, showToken, simpleField, syntaxError
     , readFields, fName, warning, lineNo )
-import Distribution.Simple.Utils (warn, withFileContents)
 import Distribution.Verbosity    (normal)
 import System.Directory
     ( getCurrentDirectory, doesFileExist )
@@ -43,7 +42,10 @@ import qualified Data.Map as Map
 
 import Sortie.Project            (Environment, Project,
                                   emptyEnvironment, emptyProject)
-import Sortie.Utils              (die, dieWithLocation)
+import Sortie.Utils
+    ( die, dieWithLocation
+    , warn
+    , withFileContents )
 import qualified Sortie.Project as Project
 
 instance Functor     ParseResult where { fmap f m = m >>= return . f }
@@ -75,7 +77,7 @@ environmentFields =
       (view Project.databaseUser)     (set Project.databaseUser)
     , simpleField "database-password" showFreeText parseFreeText
       (view Project.databasePassword) (set Project.databasePassword)
-    , simpleField "install-script"    showFreeText parseFreeText
+    , simpleField "install-script"    showFreeText parseFilePathQ
       (view Project.installScript)    (set Project.installScript)
     ]
 

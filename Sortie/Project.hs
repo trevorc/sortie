@@ -19,6 +19,7 @@ module Sortie.Project
     , databaseName
     , databaseUser
     , databasePassword
+    , fromBucket
     , installScript
     , name
     , version
