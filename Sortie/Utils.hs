@@ -12,7 +12,8 @@
 -----------------------------------------------------------------------------
 
 module Sortie.Utils
-    ( MimeType(..)
+    ( (=~)
+    , MimeType(..)
     , Verbosity
     , die
     , dieWithLocation
@@ -40,6 +41,7 @@ import System.Exit               (ExitCode(..))
 import System.IO                 (IOMode(..), hPutStr, hFlush, stderr, withFile)
 import System.Process            (CreateProcess(..), StdStream(UseHandle),
                                   createProcess, proc, waitForProcess)
+import qualified Text.Regex.PCRE as Regex ((=~))
 
 instance Foldable    ((,) a) where foldMap f         = snd . fmap f
 instance Traversable ((,) a) where traverse f (x, y) = ((,) x) <$> f y
@@ -50,6 +52,11 @@ infixl 1 `elseM`
 
 elseM :: Monad m => m Bool -> m () -> m ()
 c `elseM` m = c >>= flip unless m
+
+type Match = [String]
+
+(=~) :: String -> String -> [Match]
+(=~) = (Regex.=~)
 
 warFileType :: MimeType
 warFileType = MimeType "application/zip"

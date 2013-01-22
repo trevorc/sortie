@@ -33,10 +33,10 @@ import Distribution.Version         (Version)
 import System.Exit                  (ExitCode(..))
 import Text.ParserCombinators.ReadP (get, readP_to_S)
 import Text.Printf                  (printf)
-import Text.Regex.PCRE              ((=~))
 
 import Sortie.Utils
-    ( die, notice
+    ( (=~)
+    , die, notice
     , readMaybe
     , readCommand, readCommand_, runProcessSilently )
 
