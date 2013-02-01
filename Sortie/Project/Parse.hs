@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE NamedFieldPuns, OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 -----------------------------------------------------------------------------
 -- |
@@ -21,7 +21,6 @@ module Sortie.Project.Parse
 where
 
 import Control.Applicative       (Applicative(..), (<$>), (<$))
-import Control.Lens              ((^.), set, view)
 import Control.Monad             (ap, foldM, when)
 import Control.Monad.Loops       (firstM)
 import Data.List                 (inits)
@@ -40,45 +39,44 @@ import System.FilePath
 import Text.PrettyPrint          (($$), (<+>), nest, render, space, text, vcat)
 import qualified Data.Map as Map
 
-import Sortie.Project            (Environment, Project,
+import Sortie.Project            (Environment(..), Project(..),
                                   emptyEnvironment, emptyProject)
 import Sortie.Utils
     ( die, dieWithLocation
     , warn
     , withFileContents )
-import qualified Sortie.Project as Project
 
 instance Functor     ParseResult where { fmap f m = m >>= return . f }
 instance Applicative ParseResult where { pure = return ; (<*>) = ap }
 
 projectDescriptionFields :: [FieldDescr Project]
 projectDescriptionFields =
-    [ simpleField "name"          disp parse
-      (view Project.name)         (set Project.name)
-    , simpleField "version"       disp parse
-      (view Project.version)      (set Project.version)
-    , simpleField "repository"    showFreeText parseFreeText
-      (view Project.repository)   (set Project.repository)
-    , simpleField "s3-bucket"     disp parse
-      (view Project.s3Bucket)     (set Project.s3Bucket)
-    , simpleField "s3-key-prefix" showFilePath parseFilePathQ
-      (view Project.s3KeyPrefix)  (set Project.s3KeyPrefix)
+    [ simpleField "name"             disp parse
+      projectName (\projectName p -> p {projectName})
+    , simpleField "version"          disp parse
+      version     (\version p     -> p {version})
+    , simpleField "repository"       showFreeText parseFreeText
+      repository  (\repository p  -> p {repository})
+    , simpleField "s3-bucket"        disp parse
+      s3Bucket    (\s3Bucket p    -> p {s3Bucket})
+    , simpleField "s3-key-prefix"    showFilePath parseFilePathQ
+      s3KeyPrefix (\s3KeyPrefix p -> p {s3KeyPrefix})
     ]
 
 environmentFields :: [FieldDescr Environment]
 environmentFields =
-    [ simpleField "host"              showToken parseTokenQ
-      (view Project.host)             (set Project.host)
-    , simpleField "user"              showToken parseTokenQ
-      (view Project.user)             (set Project.user)
-    , simpleField "database-name"     showToken parseTokenQ
-      (view Project.databaseName)     (set Project.databaseName)
-    , simpleField "database-user"     showToken parseTokenQ
-      (view Project.databaseUser)     (set Project.databaseUser)
-    , simpleField "database-password" showFreeText parseFreeText
-      (view Project.databasePassword) (set Project.databasePassword)
-    , simpleField "install-script"    showFreeText parseFilePathQ
-      (view Project.installScript)    (set Project.installScript)
+    [ simpleField      "host"                  showToken parseTokenQ
+      host             (\host p             -> p {host})
+    , simpleField      "user"                  showToken parseTokenQ
+      execUser         (\execUser p         -> p {execUser})
+    , simpleField      "database-name"         showToken parseTokenQ
+      databaseName     (\databaseName p     -> p {databaseName})
+    , simpleField      "database-user"         showToken parseTokenQ
+      databaseUser     (\databaseUser p     -> p {databaseUser})
+    , simpleField      "database-password"     showFreeText parseFreeText
+      databasePassword (\databasePassword p -> p {databasePassword})
+    , simpleField      "install-script"        showFreeText parseFilePathQ
+      installScript    (\installScript p    -> p {installScript})
     ]
 
 projectFileName :: FilePath
@@ -100,7 +98,7 @@ findProjectFile = (</> projectFileName) <$> findProjectDirectory
 
 projectParser :: String -> ParseResult Project
 projectParser str = do { (header, body) <- span isSimpleField <$> readFields str
-                       ; set Project.environments . Map.fromList <$>
+                       ; (\v p -> p { environments = v }) . Map.fromList <$>
                          mapM parseEnvironment body <*>
                          parseHeader header
                        }
@@ -135,7 +133,7 @@ showProject :: Project -> String
 showProject project = render $ header $$ body
     where { header = ppFields projectDescriptionFields project
           ; body = vcat . map (uncurry ppSection) . Map.toList $
-                   project ^. Project.environments
+                   environments project
           ; ppSection name env = space $$
                                  "environment" <+> text name $$
                                  nest 2 (ppFields environmentFields env)

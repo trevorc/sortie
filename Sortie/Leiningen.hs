@@ -20,7 +20,6 @@ module Sortie.Leiningen
 where
 
 import Control.Applicative       ((<$>))
-import Control.Lens              (view)
 import Control.Monad             (unless)
 import Control.Monad.Loops       (allM, andM)
 import Data.Maybe                (listToMaybe, mapMaybe)
@@ -34,18 +33,17 @@ import System.FilePath           ((</>), takeExtension)
 import Text.Printf               (printf)
 import Text.ParserCombinators.ReadP (readP_to_S)
 
-import Sortie.Project            (Project)
+import Sortie.Project            (Project(..))
 import Sortie.Utils
     ( (=~), die, elseM, getPackageName
     , notice, parseMaybe, readCommand_ )
-import qualified Sortie.Project as Project
 
 type LeiningenCommand = [String]
 
 artifactFileName :: Project -> FilePath
 artifactFileName project = printf "%s-%s.war"
-                           (getPackageName . view Project.name $ project)
-                           (showVersion . view Project.version $ project)
+                           (getPackageName . projectName $ project)
+                           (showVersion    . version     $ project)
 
 projectFileName :: FilePath
 projectFileName = "project.clj"
@@ -78,15 +76,14 @@ isUpToDate :: FilePath          -- | Artifact file path
            -> FilePath          -- | Project directory
            -> IO Bool
 isUpToDate artifactPath projectDirectory =
-    do { sourceFiles <- filter ((== ".clj") . takeExtension) <$>
-                        getDirectoryContentsRecursive projectDirectory
-       ; andM [ doesFileExist artifactPath
-              , do { artifactModTime <- getModificationTime artifactPath
-                   ; allM (fmap (< artifactModTime) . getModificationTime)
-                          sourceFiles
-                   }
-              ]
-       }
+    andM [ doesFileExist artifactPath
+         , do { sourceFiles <- filter ((== ".clj") . takeExtension) <$>
+                               getDirectoryContentsRecursive projectDirectory
+              ; artifactModTime <- getModificationTime artifactPath
+              ; allM (fmap (< artifactModTime) . getModificationTime)
+                     sourceFiles
+              }
+         ]
 
 mapButLast :: (a -> a) -> [a] -> [a]
 mapButLast _ []     = []

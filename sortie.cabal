@@ -14,7 +14,6 @@ Executable sortie
                  directory,
                  filepath,
                  hS3,
-                 lens,
                  monad-loops,
                  pretty,
                  process,

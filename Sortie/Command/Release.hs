@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE NamedFieldPuns #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Sortie.Command.Release
@@ -16,18 +16,16 @@ module Sortie.Command.Release
 where
 
 import Control.Applicative     ((<$>))
-import Control.Lens            ((^.))
 import Data.Maybe              (isJust)
 import Data.Version            (showVersion)
 
 import Sortie.Context          (Context(..))
 import Sortie.Leiningen        (createArtifact)
+import Sortie.Project (Project(..))
 import Sortie.Utils            (die, warFileType)
 import Sortie.SourceControl
     ( hasUncommittedChanges, getChangedFiles
     , ensureTagForHEAD )
-import qualified Sortie.Project as Project
-    ( name, version, s3Bucket, s3KeyPrefix )
 import qualified Sortie.Leiningen as Lein
     ( getProjectName, getProjectVersion )
 import qualified Sortie.S3 as S3
@@ -39,28 +37,25 @@ dieUnless p msg x | p x       = return ()
 
 release :: Context          -- | Project execution context.
         -> IO ()
-release Context{..} =
-    do { dieUnless not          changedFiles    =<< hasUncommittedChanges
-       ; dieUnless (== name)    nameMismatch    =<< Lein.getProjectName projectDirectory
-       ; dieUnless (== version) versionMismatch =<< Lein.getProjectVersion projectDirectory
-       ; dieUnless isJust       missingS3Env    =<< S3.connection
+release Context{dryRun, projectDirectory, verbosity,
+                project = project@Project{
+                            projectName, s3Bucket, s3KeyPrefix, version}} =
+    do { dieUnless not              changedFiles    =<< hasUncommittedChanges
+       ; dieUnless (== projectName) nameMismatch    =<< Lein.getProjectName projectDirectory
+       ; dieUnless (== version)     versionMismatch =<< Lein.getProjectVersion projectDirectory
+       ; dieUnless isJust           missingS3Env    =<< S3.connection
        ; ensureTagForHEAD verbosity dryRun version
        ; createArtifact verbosity dryRun projectDirectory project >>=
          S3.putFile verbosity dryRun s3Bucket s3KeyPrefix warFileType
        }
-    where { name        = project ^. Project.name
-          ; version     = project ^. Project.version
-          ; s3Bucket    = project ^. Project.s3Bucket
-          ; s3KeyPrefix = project ^. Project.s3KeyPrefix
-
-          ; changedFiles _ = ("release aborted. uncommitted changes:\n" ++) .
+    where { changedFiles _ = ("release aborted. uncommitted changes:\n" ++) .
                              unlines . map show <$>
                              getChangedFiles
 
-          ; nameMismatch projectName =
+          ; nameMismatch projectName' =
               return $ "mismatched project names: " ++
-                     show name ++ " vs. " ++
-                     show projectName
+                     show projectName ++ " vs. " ++
+                     show projectName'
 
           ; versionMismatch projectVersion =
               return $ "mismatched project versions: " ++

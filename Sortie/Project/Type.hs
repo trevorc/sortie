@@ -15,24 +15,11 @@ module Sortie.Project.Type
     ( Bucket(..)
     , Environment(..)
     , Project(..)
-    , host
-    , user
-    , databaseName
-    , databaseUser
-    , databasePassword
     , fromBucket
-    , installScript
-    , name
-    , version
-    , repository
-    , s3Bucket
-    , s3KeyPrefix
-    , environments
     )
 where
 
 import Control.Applicative     ((<$>))
-import Control.Lens            (makeLenses)
 import Data.Map                (Map)
 import Distribution.Package    (PackageName)
 import Distribution.ParseUtils (parseTokenQ, showToken)
@@ -50,22 +37,19 @@ fromBucket :: Bucket -> String
 fromBucket (Bucket b) = b
 
 data Environment = Environment
-     { _host             :: String
-     , _user             :: String
-     , _databaseName     :: String
-     , _databaseUser     :: String
-     , _databasePassword :: String
-     , _installScript    :: String
+     { host             :: String
+     , execUser         :: String
+     , databaseName     :: String
+     , databaseUser     :: String
+     , databasePassword :: String
+     , installScript    :: String
      } deriving Eq
 
 data Project = Project
-    { _name         :: PackageName
-    , _version      :: Version
-    , _repository   :: String
-    , _s3Bucket     :: Bucket
-    , _s3KeyPrefix  :: String
-    , _environments :: Map String Environment
+    { projectName  :: PackageName
+    , version      :: Version
+    , repository   :: String
+    , s3Bucket     :: Bucket
+    , s3KeyPrefix  :: String
+    , environments :: Map String Environment
     } deriving Eq
-
-makeLenses ''Environment
-makeLenses ''Project

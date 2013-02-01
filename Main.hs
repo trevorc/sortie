@@ -19,7 +19,6 @@ module Main
 where
 
 import Control.Applicative         (Applicative(..), (<$>))
-import Control.Lens                ((^.))
 import Control.Monad               (unless, when)
 import Data.Char                   (toLower)
 import Data.List                   ((\\), intercalate)
@@ -43,11 +42,10 @@ import Sortie.Command
 import Sortie.Command.Deploy       (deploy)
 import Sortie.Command.Release      (release)
 import Sortie.Context              (Context(..))
+import Sortie.Project              (Project(..))
 import Sortie.Project.Parse
     ( findAndParseProjectFile, findProjectDirectory, showProject )
 import Sortie.Utils                (notice)
-import qualified Sortie.Project as Project
-    ( environments, version )
 import qualified Paths_sortie (version)
 
 guardNoExtraArgs :: String -> [String] -> IO ()
@@ -62,18 +60,18 @@ releaseAction _flags args ctx =
     release ctx
 
 deployAction :: Action DeployFlags
-deployAction DeployFlags{deployTag} envs ctx@Context{project} =
+deployAction DeployFlags{deployTag} envs
+             ctx@Context{project =
+                             Project{environments, version}} =
     do { when (null envs) $ die $ "must specify at least one environment"
        ; unless (null unknownEnvs) $ die $
                     "unrecognized environments " ++ intercalate ", " unknownEnvs
-       ; mapM_ (deploy ctx version) $
-               mapMaybe (`Map.lookup` projectEnvs) targetEnvs
+       ; mapM_ (deploy ctx deployVersion) $
+               mapMaybe (`Map.lookup` environments) targetEnvs
        }
-    where { projectEnvs    = project ^. Project.environments
-          ; projectVersion = project ^. Project.version
-          ; targetEnvs     = map toLower <$> envs
-          ; unknownEnvs    = targetEnvs \\ Map.keys projectEnvs
-          ; version        = fromFlagOrDefault projectVersion deployTag
+    where { targetEnvs    = map toLower <$> envs
+          ; unknownEnvs   = targetEnvs \\ Map.keys environments
+          ; deployVersion = fromFlagOrDefault version deployTag
           }
 
 migrateAction :: Action MigrateFlags

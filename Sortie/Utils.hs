@@ -34,7 +34,6 @@ module Sortie.Utils
 where
 
 import Control.Applicative       ((<$>))
-import Control.Lens              (_4, view)
 import Control.Monad             (when, unless, void)
 import Data.Foldable             (Foldable(..))
 import Data.List                 (find)
@@ -88,16 +87,17 @@ parseMaybe p s = fst <$> find (null . snd) (p s)
 readMaybe :: Read a => String -> Maybe a
 readMaybe = parseMaybe reads
 
+fourth :: (a, b, c, d) -> d
+fourth (_,_,_,x) = x
+
 runProcessSilently :: FilePath -> [String] -> IO ExitCode
 runProcessSilently cmd args =
-    withFile "/dev/null" ReadWriteMode $ \nul -> do
-      { ph <- view _4 <$> createProcess (proc cmd args)
-              { std_err = UseHandle nul
-              , std_in  = UseHandle nul
-              , std_out = UseHandle nul
-              }
-      ; waitForProcess ph
-      }
+    withFile "/dev/null" ReadWriteMode $ \nul ->
+        createProcess (proc cmd args)
+                          { std_err = UseHandle nul
+                          , std_in  = UseHandle nul
+                          , std_out = UseHandle nul } >>=
+        waitForProcess . fourth
 
 readCommand :: FilePath -> [String] -> IO String
 readCommand = rawSystemStdout normal

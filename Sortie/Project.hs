@@ -11,24 +11,9 @@
 -----------------------------------------------------------------------------
 
 module Sortie.Project
-    ( Bucket(..)
-    , Environment
-    , Project
-    , host
-    , user
-    , databaseName
-    , databaseUser
-    , databasePassword
-    , fromBucket
-    , installScript
-    , name
-    , version
-    , repository
-    , s3Bucket
-    , s3KeyPrefix
-    , environments
-    , emptyProject
-    , emptyEnvironment
+    ( Bucket(..), fromBucket
+    , Project(..), emptyProject
+    , Environment(..), emptyEnvironment
     )
 where
 
@@ -41,21 +26,21 @@ import Sortie.Project.Type
 emptyEnvironment :: Environment
 emptyEnvironment
     = Environment
-      { _host             = ""
-      , _user             = ""
-      , _databaseName     = ""
-      , _databaseUser     = ""
-      , _databasePassword = ""
-      , _installScript    = ""
+      { host             = ""
+      , execUser         = ""
+      , databaseName     = ""
+      , databaseUser     = ""
+      , databasePassword = ""
+      , installScript    = ""
       }
 
 emptyProject :: Project
 emptyProject
     = Project
-       { _name         = PackageName ""
-       , _version      = Version [] []
-       , _repository   = ""
-       , _s3Bucket     = Bucket ""
-       , _s3KeyPrefix  = ""
-       , _environments = Map.empty
+       { projectName  = PackageName ""
+       , version      = Version [] []
+       , repository   = ""
+       , s3Bucket     = Bucket ""
+       , s3KeyPrefix  = ""
+       , environments = Map.empty
        }
