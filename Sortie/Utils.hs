@@ -20,6 +20,7 @@ module Sortie.Utils
     , elseM
     , getPackageName
     , info
+    , isRight
     , notice
     , parseMaybe
     , readMaybe
@@ -89,6 +90,10 @@ readMaybe = parseMaybe reads
 
 fourth :: (a, b, c, d) -> d
 fourth (_,_,_,x) = x
+
+isRight :: Either a b -> Bool
+isRight (Right _) = True
+isRight _         = False
 
 runProcessSilently :: FilePath -> [String] -> IO ExitCode
 runProcessSilently cmd args =

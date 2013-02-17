@@ -35,7 +35,7 @@ dieUnless :: (a -> Bool) -> (a -> IO String) -> a -> IO ()
 dieUnless p msg x | p x       = return ()
                   | otherwise = msg x >>= die
 
-release :: Context          -- | Project execution context.
+release :: Context          -- ^ Project execution context.
         -> IO ()
 release Context{dryRun, projectDirectory, verbosity,
                 project = project@Project{

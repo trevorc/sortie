@@ -72,18 +72,20 @@ parseProjectField fld pat parser dir = withFileContents projectFilePath $
           ; match _          = Nothing
           }
 
-isUpToDate :: FilePath          -- | Artifact file path
-           -> FilePath          -- | Project directory
+isUpToDate :: FilePath          -- ^ Artifact file path
+           -> FilePath          -- ^ Project directory
            -> IO Bool
 isUpToDate artifactPath projectDirectory =
     andM [ doesFileExist artifactPath
-         , do { sourceFiles <- filter ((== ".clj") . takeExtension) <$>
+         , do { sourceFiles <- filter isProjectFile <$>
                                getDirectoryContentsRecursive projectDirectory
               ; artifactModTime <- getModificationTime artifactPath
               ; allM (fmap (< artifactModTime) . getModificationTime)
                      sourceFiles
               }
          ]
+    where isProjectFile = (`elem` [".clj", ".resources", ".xml"]) .
+                          takeExtension
 
 mapButLast :: (a -> a) -> [a] -> [a]
 mapButLast _ []     = []

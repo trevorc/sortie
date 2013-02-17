@@ -15,6 +15,7 @@ module Sortie.Command.Deploy
     ( deploy )
 where
 
+import Control.Arrow           (first)
 import Control.Applicative     ((<$>))
 import Control.Monad           (unless)
 import Data.Version            (showVersion)
@@ -38,37 +39,40 @@ ssh Context{verbosity, dryRun, projectDirectory}
     envVars = do
       { notice verbosity $ printf "running `%s' on `%s'\n"
                    (unwords args) host
-      ; unless dryRun $ withFileContents script $
+      ; unless dryRun $ withFileContents scriptPath $
                writeCommand verbosity "ssh" (host : args)
       }
     where { args = [ "sudo", "-u", execUser, "env" ] ++ envArgs ++
-                   [ "sh", "-" ]
+                   [ "sh", "-s", "-" ] ++ scriptArgs
           ; envArgs = [ printf "%s=%s" varName (show val)
                       | (varName, val) <- envVars ]
-          ; script = projectDirectory </> installScript
+          ; (scriptName:scriptArgs) = installScript
+          ; scriptPath = projectDirectory </> scriptName
           }
 
-deploy :: Context               -- | Execution context.
-       -> Version               -- | Version to deploy.
-       -> Environment           -- | Target deployment environment.
+projectEnvVars :: Project -> [(String, String)]
+projectEnvVars project@Project{projectName, version, s3Bucket, s3KeyPrefix} =
+    first (varNamePrefix++) <$>
+              [ ("PROJECT_NAME",    getPackageName $ projectName)
+              , ("PROJECT_VERSION", showVersion version)
+              , ("S3_KEY_PREFIX",   s3KeyPrefix)
+              , ("ARTIFACT_NAME",   artifactFileName project)
+              , ("S3_BUCKET",       fromBucket s3Bucket)
+              ]
+    where varNamePrefix = "SORTIE_"
+
+deploy :: Context               -- ^ Execution context.
+       -> Version               -- ^ Version to deploy.
+       -> Environment           -- ^ Target deployment environment.
        -> IO ()
-deploy ctx@Context{project =
-                       project@Project{projectName, s3Bucket, s3KeyPrefix}
+deploy ctx@Context{project = project@Project{s3Bucket, s3KeyPrefix}
                   } version env =
     do { elem tagName <$> listTags `elseM` unknownVersion "git"
        ; S3.hasKey s3Bucket s3Key  `elseM` unknownVersion "S3"
-       ; ssh ctx env envVars
+       ; ssh ctx env $ projectEnvVars project {version}
        }
     where { tagName = versionToTag version
           ; s3Key   = s3KeyPrefix </> artifactFileName project
-
-          ; envVars = [ ("SORTIE_PROJECT_NAME",    getPackageName $ projectName)
-                      , ("SORTIE_PROJECT_VERSION", showVersion version)
-                      , ("SORTIE_S3_KEY_PREFIX",   s3KeyPrefix)
-                      , ("SORTIE_ARTIFACT_NAME",   artifactFileName project)
-                      , ("SORTIE_S3_BUCKET",       fromBucket s3Bucket)
-                      ]
-
           ; unknownVersion repo
               = die $ printf "unknown version in %s: %s \
                               \(try `sortie release' first)"

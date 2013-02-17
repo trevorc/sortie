@@ -30,7 +30,8 @@ import Distribution.ParseUtils
     , locatedErrorMsg, parseFilePathQ, parseFreeText
     , parseTokenQ, ppFields, showFilePath, showFreeText
     , showPWarning, showToken, simpleField, syntaxError
-    , readFields, fName, warning, lineNo )
+    , spaceListField, readFields, fName, warning, lineNo )
+import Distribution.Compat.ReadP (ReadP, readS_to_P)
 import Distribution.Verbosity    (normal)
 import System.Directory
     ( getCurrentDirectory, doesFileExist )
@@ -73,11 +74,14 @@ environmentFields =
       databaseName     (\databaseName p     -> p {databaseName})
     , simpleField      "database-user"         showToken parseTokenQ
       databaseUser     (\databaseUser p     -> p {databaseUser})
-    , simpleField      "database-password"     showFreeText parseFreeText
+    , simpleField      "database-password"     showFreeText parseHaskellString
       databasePassword (\databasePassword p -> p {databasePassword})
-    , simpleField      "install-script"        showFreeText parseFilePathQ
+    , spaceListField   "install-script"        showFreeText parseHaskellString
       installScript    (\installScript p    -> p {installScript})
     ]
+
+parseHaskellString :: ReadP r String
+parseHaskellString = readS_to_P reads
 
 projectFileName :: FilePath
 projectFileName = "Sortieproject"

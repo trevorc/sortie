@@ -33,7 +33,7 @@ import qualified Data.ByteString.Lazy as B
     ( hGetContents )
 
 import Sortie.Project            (Bucket(Bucket))
-import Sortie.Utils              (MimeType(..), die, notice)
+import Sortie.Utils              (MimeType(..), die, isRight, notice)
 
 connection :: IO (Maybe AWSConnection)
 connection = liftA2 amazonS3Connection <$>
@@ -43,9 +43,6 @@ connection = liftA2 amazonS3Connection <$>
 connectToS3 :: IO AWSConnection
 connectToS3 = connection >>= maybe (die "aws keys not found") return
 
-isRight :: Either a b -> Bool
-isRight = either (const False) (const True)
-
 hasKey :: Bucket -> String -> IO Bool
 hasKey (Bucket bucket) key =
     do { conn <- connectToS3
@@ -53,12 +50,12 @@ hasKey (Bucket bucket) key =
          getObjectInfo conn $ S3Object bucket key "" [] ""
        }
 
-putFile :: Verbosity            -- | Verbosity
-        -> Bool                 -- | Dry run (perform no action)
-        -> Bucket               -- | S3 bucket
-        -> String               -- | S3 key prefix
-        -> MimeType             -- | Mime type
-        -> FilePath             -- | Path to file to upload
+putFile :: Verbosity            -- ^ Verbosity
+        -> Bool                 -- ^ Dry run (perform no action)
+        -> Bucket               -- ^ S3 bucket
+        -> String               -- ^ S3 key prefix
+        -> MimeType             -- ^ Mime type
+        -> FilePath             -- ^ Path to file to upload
         -> IO ()
 putFile verbosity dryRun (Bucket bucket) keyPrefix (MimeType mime) path =
     do { conn <- connectToS3

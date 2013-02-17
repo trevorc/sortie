@@ -31,7 +31,7 @@ emptyEnvironment
       , databaseName     = ""
       , databaseUser     = ""
       , databasePassword = ""
-      , installScript    = ""
+      , installScript    = []
       }
 
 emptyProject :: Project

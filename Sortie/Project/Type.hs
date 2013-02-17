@@ -42,7 +42,7 @@ data Environment = Environment
      , databaseName     :: String
      , databaseUser     :: String
      , databasePassword :: String
-     , installScript    :: String
+     , installScript    :: [String]
      } deriving Eq
 
 data Project = Project

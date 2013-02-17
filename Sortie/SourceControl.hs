@@ -37,6 +37,7 @@ import Text.Printf                  (printf)
 import Sortie.Utils
     ( (=~)
     , die, notice
+    , elseM
     , readMaybe
     , readCommand, readCommand_, runProcessSilently )
 
@@ -126,24 +127,22 @@ parseRev treeish = readCommand "git" ["rev-parse", treeish] >>=
 headRevision :: IO Revision
 headRevision = parseRev "HEAD"
 
-ensureTagForHEAD :: Verbosity   -- | Log at this verbosity.
-                 -> Bool        -- | Dry run -- perform no action.
-                 -> Version     -- | Version to create tag for.
+ensureTagForHEAD :: Verbosity   -- ^ Log at this verbosity.
+                 -> Bool        -- ^ Dry run -- perform no action.
+                 -> Version     -- ^ Version to create tag for.
                  -> IO ()
 ensureTagForHEAD verbosity dryRun version =
     do { tagExists <- elem tagName <$> listTags
-       ; if tagExists then ensureIsHEAD else createTag
-       }
-    where { ensureIsHEAD = do
-              { isHead <- (==) <$> headRevision <*> parseRev tagName
-              ; unless isHead $ die $ printf "tag %s already exists \
-                                             \and does not point to HEAD" tagName
-              }
-          ; createTag = do
-              { notice verbosity $ "creating tag " ++
-                       tagName ++ "..."
+       ; if tagExists
+           then (==) <$> headRevision <*> parseRev tagName
+                    `elseM` tagIsNotHEAD
+           else do
+              { notice verbosity $ "creating tag " ++ tagName ++ "..."
               ; unless dryRun $ tagVersion version
               ; notice verbosity "done.\n"
               }
-          ; tagName = versionToTag version
+       }
+    where { tagName = versionToTag version
+          ; tagIsNotHEAD = die $ printf "tag %s already exists \
+                                        \and does not point to HEAD" tagName
           }
