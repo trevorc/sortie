@@ -21,6 +21,8 @@ module Sortie.Utils
     , getPackageName
     , info
     , isRight
+    , mapButLast
+    , mapLast
     , notice
     , parseMaybe
     , readMaybe
@@ -72,18 +74,13 @@ type Match = [String]
 warFileType :: MimeType
 warFileType = MimeType "application/zip"
 
-emitLog :: Verbosity -> Verbosity -> String -> IO ()
-emitLog minVerbosity verbosity msg =
-    when (verbosity >= minVerbosity) $ do
-      { hPutStr stderr msg
-      ; hFlush stderr
-      }
+getPackageName :: PackageName -> String
+getPackageName (PackageName name) = name
 
-notice :: Verbosity -> String -> IO ()
-notice = emitLog normal
 
-info :: Verbosity -> String -> IO ()
-info = emitLog verbose
+---------------------
+-- Basic Utilities --
+---------------------
 
 parseMaybe :: ReadS a -> String -> Maybe a
 parseMaybe p s = fst <$> find (null . snd) (p s)
@@ -103,6 +100,41 @@ fourth (_,_,_,x) = x
 isRight :: Either a b -> Bool
 isRight (Right _) = True
 isRight _         = False
+
+mapButLast :: (a -> a) -> [a] -> [a]
+mapButLast _ []     = []
+mapButLast _ [x]    = [x]
+mapButLast f (x:xs) = f x : mapButLast f xs
+
+mapLast :: (a -> a) -> [a] -> [a]
+mapLast _ []     = []
+mapLast f [x]    = [f x]
+mapLast f (x:xs) = x : mapLast f xs
+
+-------------
+-- Logging --
+-------------
+
+emitLog :: Verbosity -> Verbosity -> String -> IO ()
+emitLog minVerbosity verbosity msg =
+    when (verbosity >= minVerbosity) $ do
+      { hPutStr stderr msg
+      ; hFlush stderr
+      }
+
+notice :: Verbosity -> String -> IO ()
+notice = emitLog normal
+
+info :: Verbosity -> String -> IO ()
+info = emitLog verbose
+
+
+-------------------
+-- I/O Utilities --
+-------------------
+
+withFileContents :: FilePath -> (String -> IO a) -> IO a
+withFileContents = withUTF8FileContents
 
 runProcessSilently :: FilePath -> [String] -> IO ExitCode
 runProcessSilently cmd args =
@@ -128,10 +160,3 @@ writeCommand verbosity cmd args input =
                                 (Just (input, True)) True
        ; unless (status == ExitSuccess) $ die errors
        }
-
-
-getPackageName :: PackageName -> String
-getPackageName (PackageName name) = name
-
-withFileContents :: FilePath -> (String -> IO a) -> IO a
-withFileContents = withUTF8FileContents

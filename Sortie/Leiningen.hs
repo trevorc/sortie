@@ -36,6 +36,7 @@ import Text.ParserCombinators.ReadP (readP_to_S)
 import Sortie.Project            (Project(..))
 import Sortie.Utils
     ( (=~), die, elseM, getPackageName
+    , mapButLast, mapLast
     , notice, parseMaybe, readCommand_ )
 
 type LeiningenCommand = [String]
@@ -86,16 +87,6 @@ isUpToDate artifactPath projectDirectory =
          ]
     where isProjectFile = (`elem` [".clj", ".resources", ".xml"]) .
                           takeExtension
-
-mapButLast :: (a -> a) -> [a] -> [a]
-mapButLast _ []     = []
-mapButLast _ [x]    = [x]
-mapButLast f (x:xs) = f x : mapButLast f xs
-
-mapLast :: (a -> a) -> [a] -> [a]
-mapLast _ []     = []
-mapLast f [x]    = [f x]
-mapLast f (x:xs) = x : mapLast f xs
 
 leinDo :: [LeiningenCommand] -> IO ()
 leinDo commands = readCommand_ "lein" $ "do" : concat (joinCommands commands)
