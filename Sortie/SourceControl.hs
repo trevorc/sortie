@@ -1,4 +1,4 @@
-{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE NamedFieldPuns, OverloadedStrings #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Sortie.Project.Parse
@@ -35,9 +35,11 @@ import Text.Printf                  (printf)
 
 import Sortie.Context            (Context(..))
 import Sortie.Utils
-    ( (=~)
+    ( (=^~)
+    , Pattern
     , die, notice
     , elseM
+    , maybeTuple
     , readMaybe
     , readCommand, readCommand_, runProcessSilently )
 
@@ -91,18 +93,13 @@ isWorkingTreeDirty =
 hasUncommittedChanges :: IO Bool
 hasUncommittedChanges = not . null <$> getChangedFiles
 
-diffLinePattern :: String
+diffLinePattern :: Pattern
 diffLinePattern = "^:[0-7]+ [0-7]+ [0-9a-f]+ [0-9a-f]+ (.)[0-9]*\t([^\t\n]+)$"
 
 processDiffLine :: String -> Maybe FileChange
-processDiffLine line = do { (fp, st) <- match
+processDiffLine line = do { (st, fp) <- maybeTuple $ line =^~ diffLinePattern
                           ; FileChange fp <$> readMaybe st
                           }
-    where match :: Maybe (FilePath, String)
-          match = case line =~ diffLinePattern of
-                    { [[_,st,fp]] -> Just (fp, st)
-                    ; _           -> Nothing
-                    }
 
 getChangedFiles :: IO [FileChange]
 getChangedFiles = mapMaybe processDiffLine . lines <$>

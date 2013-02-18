@@ -1,4 +1,4 @@
-{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE NamedFieldPuns, OverloadedStrings #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Sortie.Leiningen
@@ -36,7 +36,7 @@ import Text.ParserCombinators.ReadP (readP_to_S)
 import Sortie.Context            (Context(..))
 import Sortie.Project            (Project(..), getPackageName)
 import Sortie.Utils
-    ( (=~), die, elseM
+    ( Pattern, (=^~), die, elseM
     , mapButLast, mapLast
     , notice, parseMaybe, readCommand_ )
 
@@ -52,9 +52,9 @@ projectFileName = "project.clj"
 
 getProjectName :: FilePath -> IO PackageName
 getProjectName = parseProjectField "name" projectNamePattern (Just . PackageName)
-    where projectNamePattern = "defproject[[:space:]]+" ++
-                               "(?:[[:alnum:]_.-]+/)?" ++
-                               "([[:alnum:]_-]+)"
+    where projectNamePattern = "defproject[[:space:]]+\
+                               \(?:[[:alnum:]_.-]+/)?\
+                               \([[:alnum:]_-]+)"
 
 getProjectVersion :: FilePath -> IO Version
 getProjectVersion = parseProjectField "version" projectVersionPattern readVersion
@@ -62,16 +62,14 @@ getProjectVersion = parseProjectField "version" projectVersionPattern readVersio
           ; readVersion = parseMaybe $ readP_to_S parseVersion
           }
 
-parseProjectField :: String -> String -> (String -> Maybe a) -> FilePath -> IO a
+parseProjectField :: String -> Pattern -> (String -> Maybe a) -> FilePath -> IO a
 parseProjectField fld pat parser dir = withFileContents projectFilePath $
                                        maybe notFoundError return .
                                        listToMaybe . mapMaybe findField . lines
     where { projectFilePath = dir </> projectFileName
           ; notFoundError = die $ "couldn't find " ++ fld ++
                             " in " ++ projectFilePath
-          ; findField = match . (=~ pat)
-          ; match [[_, str]] = parser str
-          ; match _          = Nothing
+          ; findField line = listToMaybe (line =^~ pat) >>= parser
           }
 
 isUpToDate :: FilePath          -- ^ Artifact file path

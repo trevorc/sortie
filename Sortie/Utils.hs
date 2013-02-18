@@ -12,8 +12,9 @@
 -----------------------------------------------------------------------------
 
 module Sortie.Utils
-    ( (=~)
+    ( (=^~)
     , MimeType(..)
+    , Pattern
     , Verbosity
     , die
     , dieWithLocation
@@ -22,6 +23,7 @@ module Sortie.Utils
     , isRight
     , mapButLast
     , mapLast
+    , maybeTuple
     , notice
     , parseMaybe
     , readMaybe
@@ -42,6 +44,7 @@ import Control.Arrow             (first, second)
 import Control.Monad             (when, unless, void)
 import Data.Foldable             (Foldable(..))
 import Data.List                 (find)
+import Data.String               (IsString(..))
 import Data.Traversable          (Traversable(..))
 import Distribution.Simple.Utils
     ( die, dieWithLocation, warn
@@ -52,7 +55,7 @@ import System.Exit               (ExitCode(..))
 import System.IO                 (IOMode(..), hPutStr, hFlush, stderr, withFile)
 import System.Process            (CreateProcess(..), StdStream(UseHandle),
                                   createProcess, proc, waitForProcess)
-import qualified Text.Regex.PCRE as Regex ((=~))
+import Text.Regex.PCRE           ((=~))
 
 instance Foldable    ((,) a) where foldMap f         = snd . fmap f
 instance Traversable ((,) a) where traverse f (x, y) = ((,) x) <$> f y
@@ -64,10 +67,15 @@ infixl 1 `elseM`
 elseM :: Monad m => m Bool -> m () -> m ()
 c `elseM` m = c >>= flip unless m
 
-type Match = [String]
+newtype Pattern = Pattern String
+type Group = String
 
-(=~) :: String -> String -> [Match]
-(=~) = (Regex.=~)
+instance IsString Pattern where fromString = Pattern
+
+(=^~) :: String -> Pattern -> [Group]
+str =^~ (Pattern pat) = case str =~ pat of
+                          ((_:groups):_) -> groups
+                          _              -> []
 
 warFileType :: MimeType
 warFileType = MimeType "application/zip"
@@ -88,6 +96,10 @@ setFst = first . const
 
 setSnd :: c -> (a, b) -> (a, c)
 setSnd = second . const
+
+maybeTuple :: [a] -> Maybe (a, a)
+maybeTuple [x, y] = Just (x, y)
+maybeTuple _      = Nothing
 
 fourth :: (a, b, c, d) -> d
 fourth (_,_,_,x) = x
