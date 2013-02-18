@@ -27,6 +27,8 @@ module Sortie.Utils
     , readCommand
     , readCommand_
     , runProcessSilently
+    , setFst
+    , setSnd
     , warFileType
     , warn
     , withFileContents
@@ -35,6 +37,7 @@ module Sortie.Utils
 where
 
 import Control.Applicative       ((<$>))
+import Control.Arrow             (first, second)
 import Control.Monad             (when, unless, void)
 import Data.Foldable             (Foldable(..))
 import Data.List                 (find)
@@ -87,6 +90,12 @@ parseMaybe p s = fst <$> find (null . snd) (p s)
 
 readMaybe :: Read a => String -> Maybe a
 readMaybe = parseMaybe reads
+
+setFst :: c -> (a, b) -> (c, b)
+setFst = first . const
+
+setSnd :: c -> (a, b) -> (a, c)
+setSnd = second . const
 
 fourth :: (a, b, c, d) -> d
 fourth (_,_,_,x) = x

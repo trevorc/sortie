@@ -46,8 +46,8 @@ ssh Context{verbosity, dryRun, projectDirectory}
                    [ "sh", "-s", "-" ] ++ scriptArgs
           ; envArgs = [ printf "%s=%s" varName (show val)
                       | (varName, val) <- envVars ]
-          ; (scriptName:scriptArgs) = installScript
-          ; scriptPath = projectDirectory </> scriptName
+          ; (scriptPath, scriptArgs)
+              = first (projectDirectory </>) installScript
           }
 
 projectEnvVars :: Project -> [(String, String)]

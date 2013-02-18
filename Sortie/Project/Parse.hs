@@ -44,6 +44,7 @@ import Sortie.Project            (Environment(..), Project(..),
                                   emptyEnvironment, emptyProject)
 import Sortie.Utils
     ( die, dieWithLocation
+    , setFst, setSnd
     , warn
     , withFileContents )
 
@@ -67,17 +68,23 @@ projectDescriptionFields =
 environmentFields :: [FieldDescr Environment]
 environmentFields =
     [ simpleField      "host"                  showToken parseTokenQ
-      host             (\host p             -> p {host})
+      host             (\host e             -> e {host})
     , simpleField      "user"                  showToken parseTokenQ
-      execUser         (\execUser p         -> p {execUser})
+      execUser         (\execUser e         -> e {execUser})
     , simpleField      "database-name"         showToken parseTokenQ
-      databaseName     (\databaseName p     -> p {databaseName})
+      databaseName     (\databaseName e     -> e {databaseName})
     , simpleField      "database-user"         showToken parseTokenQ
-      databaseUser     (\databaseUser p     -> p {databaseUser})
+      databaseUser     (\databaseUser e     -> e {databaseUser})
     , simpleField      "database-password"     showFreeText parseHaskellString
-      databasePassword (\databasePassword p -> p {databasePassword})
-    , spaceListField   "install-script"        showFreeText parseHaskellString
-      installScript    (\installScript p    -> p {installScript})
+      databasePassword (\databasePassword e -> e {databasePassword})
+    , simpleField      "install-script"        showFilePath parseFilePathQ
+      (fst . installScript)
+      (\path e@Environment{installScript} ->
+           e {installScript = setFst path installScript})
+    , spaceListField   "install-script-args"   showFilePath parseHaskellString
+      (snd . installScript)
+      (\args e@Environment{installScript} ->
+           e {installScript = setSnd args installScript})
     ]
 
 parseHaskellString :: ReadP r String
