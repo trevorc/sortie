@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE NamedFieldPuns #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Sortie.Project.Parse
@@ -28,12 +28,12 @@ import Control.Applicative          ((<$>), (<*>))
 import Control.Monad                (unless)
 import Data.Maybe                   (listToMaybe, mapMaybe)
 import Data.Version                 (showVersion)
-import Distribution.Verbosity       (Verbosity)
 import Distribution.Version         (Version)
 import System.Exit                  (ExitCode(..))
 import Text.ParserCombinators.ReadP (get, readP_to_S)
 import Text.Printf                  (printf)
 
+import Sortie.Context            (Context(..))
 import Sortie.Utils
     ( (=~)
     , die, notice
@@ -81,7 +81,7 @@ showFileStatus Unmerged   = "U"
 showFileStatus TypeChange = "T"
 
 showFileChange :: FileChange -> String
-showFileChange FileChange{..} = printf "%s %s" (show status) path
+showFileChange FileChange{status, path} = printf "%s %s" (show status) path
 
 isWorkingTreeDirty :: IO Bool
 isWorkingTreeDirty =
@@ -127,11 +127,10 @@ parseRev treeish = readCommand "git" ["rev-parse", treeish] >>=
 headRevision :: IO Revision
 headRevision = parseRev "HEAD"
 
-ensureTagForHEAD :: Verbosity   -- ^ Log at this verbosity.
-                 -> Bool        -- ^ Dry run -- perform no action.
+ensureTagForHEAD :: Context     -- ^ Execution context.
                  -> Version     -- ^ Version to create tag for.
                  -> IO ()
-ensureTagForHEAD verbosity dryRun version =
+ensureTagForHEAD Context{verbosity, dryRun} version =
     do { tagExists <- elem tagName <$> listTags
        ; if tagExists
            then (==) <$> headRevision <*> parseRev tagName

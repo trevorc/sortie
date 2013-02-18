@@ -16,12 +16,13 @@ module Sortie.Project.Type
     , Environment(..)
     , Project(..)
     , fromBucket
+    , getPackageName
     )
 where
 
 import Control.Applicative     ((<$>))
 import Data.Map                (Map)
-import Distribution.Package    (PackageName)
+import Distribution.Package    (PackageName(PackageName))
 import Distribution.ParseUtils (parseTokenQ, showToken)
 import Distribution.Text       (Text(..))
 import Distribution.Version    (Version)
@@ -32,6 +33,9 @@ newtype Bucket = Bucket String
 instance Text Bucket where
     parse = Bucket <$> parseTokenQ
     disp (Bucket b) = showToken b
+
+getPackageName :: PackageName -> String
+getPackageName (PackageName name) = name
 
 fromBucket :: Bucket -> String
 fromBucket (Bucket b) = b

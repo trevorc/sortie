@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Sortie.Leiningen
@@ -27,15 +28,15 @@ import Data.Version              (Version(..), parseVersion, showVersion)
 import Distribution.Package      (PackageName(PackageName))
 import Distribution.Simple.Utils
     ( getDirectoryContentsRecursive, withFileContents )
-import Distribution.Verbosity    (Verbosity)
 import System.Directory          (doesFileExist, getModificationTime)
 import System.FilePath           ((</>), takeExtension)
 import Text.Printf               (printf)
 import Text.ParserCombinators.ReadP (readP_to_S)
 
-import Sortie.Project            (Project(..))
+import Sortie.Context            (Context(..))
+import Sortie.Project            (Project(..), getPackageName)
 import Sortie.Utils
-    ( (=~), die, elseM, getPackageName
+    ( (=~), die, elseM
     , mapButLast, mapLast
     , notice, parseMaybe, readCommand_ )
 
@@ -92,10 +93,10 @@ leinDo :: [LeiningenCommand] -> IO ()
 leinDo commands = readCommand_ "lein" $ "do" : concat (joinCommands commands)
     where joinCommands = mapButLast (mapLast (++ ","))
 
-createArtifact :: Verbosity -> Bool -> FilePath -> Project -> IO FilePath
-createArtifact verbosity dryRun projectDir project =
+createArtifact :: Context -> IO FilePath
+createArtifact Context{verbosity, dryRun, projectDirectory, project} =
     do { notice verbosity $ "creating artifact " ++ artifactPath ++ "..."
-       ; upToDate <- isUpToDate artifactPath projectDir
+       ; upToDate <- isUpToDate artifactPath projectDirectory
        ; unless (dryRun || upToDate) $ do
            { leinDo [["clean"], ["ring", "uberwar", fileName]]
            ; doesFileExist artifactPath `elseM` artifactNotCreated
@@ -103,7 +104,7 @@ createArtifact verbosity dryRun projectDir project =
        ; notice verbosity $ if upToDate then "(up-to-date).\n" else "done.\n"
        ; return artifactPath
        }
-    where { artifactPath       = projectDir </> "target" </> fileName
+    where { artifactPath       = projectDirectory </> "target" </> fileName
           ; fileName           = artifactFileName project
           ; artifactNotCreated = die $ "failed to create artifact at " ++
                                  artifactPath

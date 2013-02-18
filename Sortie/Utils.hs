@@ -18,7 +18,6 @@ module Sortie.Utils
     , die
     , dieWithLocation
     , elseM
-    , getPackageName
     , info
     , isRight
     , mapButLast
@@ -44,7 +43,6 @@ import Control.Monad             (when, unless, void)
 import Data.Foldable             (Foldable(..))
 import Data.List                 (find)
 import Data.Traversable          (Traversable(..))
-import Distribution.Package      (PackageName(PackageName))
 import Distribution.Simple.Utils
     ( die, dieWithLocation, warn
     , rawSystemStdInOut, rawSystemStdout
@@ -73,9 +71,6 @@ type Match = [String]
 
 warFileType :: MimeType
 warFileType = MimeType "application/zip"
-
-getPackageName :: PackageName -> String
-getPackageName (PackageName name) = name
 
 
 ---------------------

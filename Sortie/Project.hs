@@ -14,6 +14,7 @@ module Sortie.Project
     ( Bucket(..), fromBucket
     , Project(..), emptyProject
     , Environment(..), emptyEnvironment
+    , getPackageName
     )
 where
 

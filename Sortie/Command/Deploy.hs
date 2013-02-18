@@ -16,22 +16,18 @@ module Sortie.Command.Deploy
 where
 
 import Control.Arrow           (first)
-import Control.Applicative     ((<$>))
 import Control.Monad           (unless)
-import Data.Version            (showVersion)
 import Distribution.Version    (Version)
 import System.FilePath         ((</>))
 import Text.Printf             (printf)
 
 import Sortie.Context          (Context(..))
-import Sortie.Leiningen        (artifactFileName)
-import Sortie.Project          (Environment(..), Project(..), fromBucket)
-import Sortie.SourceControl    (listTags, versionToTag)
+import Sortie.Project          (Environment(..), Project(..))
+import Sortie.ProjectUtils
+    ( ensureArtifactInS3, ensureTagExists, projectEnvVars )
 import Sortie.Utils
-    ( die, getPackageName, elseM, notice
+    ( notice
     , withFileContents, writeCommand )
-import qualified Sortie.S3 as S3
-    ( hasKey )
 
 ssh :: Context -> Environment -> [(String, String)] -> IO ()
 ssh Context{verbosity, dryRun, projectDirectory}
@@ -50,31 +46,14 @@ ssh Context{verbosity, dryRun, projectDirectory}
               = first (projectDirectory </>) installScript
           }
 
-projectEnvVars :: Project -> [(String, String)]
-projectEnvVars project@Project{projectName, version, s3Bucket, s3KeyPrefix} =
-    first (varNamePrefix++) <$>
-              [ ("PROJECT_NAME",    getPackageName $ projectName)
-              , ("PROJECT_VERSION", showVersion version)
-              , ("S3_KEY_PREFIX",   s3KeyPrefix)
-              , ("ARTIFACT_NAME",   artifactFileName project)
-              , ("S3_BUCKET",       fromBucket s3Bucket)
-              ]
-    where varNamePrefix = "SORTIE_"
-
 deploy :: Context               -- ^ Execution context.
        -> Version               -- ^ Version to deploy.
        -> Environment           -- ^ Target deployment environment.
        -> IO ()
-deploy ctx@Context{project = project@Project{s3Bucket, s3KeyPrefix}
-                  } version env =
-    do { elem tagName <$> listTags `elseM` unknownVersion "git"
-       ; S3.hasKey s3Bucket s3Key  `elseM` unknownVersion "S3"
-       ; ssh ctx env $ projectEnvVars project {version}
+deploy ctx version env =
+    do { ensureTagExists project'
+       ; ensureArtifactInS3 project'
+       ; ssh ctx env $ projectEnvVars project'
        }
-    where { tagName = versionToTag version
-          ; s3Key   = s3KeyPrefix </> artifactFileName project
-          ; unknownVersion repo
-              = die $ printf "unknown version in %s: %s \
-                              \(try `sortie release' first)"
-                              repo (showVersion version)
-          }
+    where project' = (project ctx) {version}
+

@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE NamedFieldPuns, OverloadedStrings #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Sortie.Command.Release
@@ -20,7 +20,6 @@ where
 
 import Control.Applicative       ((<$>), (<*>), liftA2)
 import Control.Monad             ((>=>), unless)
-import Distribution.Verbosity    (Verbosity)
 import Network.AWS.AWSConnection (AWSConnection, amazonS3Connection)
 import Network.AWS.AWSResult     (prettyReqError)
 import Network.AWS.S3Object
@@ -32,7 +31,8 @@ import Text.Printf               (printf)
 import qualified Data.ByteString.Lazy as B
     ( hGetContents )
 
-import Sortie.Project            (Bucket(Bucket))
+import Sortie.Context            (Context(..))
+import Sortie.Project            (Bucket(Bucket), Project(..))
 import Sortie.Utils              (MimeType(..), die, isRight, notice)
 
 connection :: IO (Maybe AWSConnection)
@@ -50,14 +50,13 @@ hasKey (Bucket bucket) key =
          getObjectInfo conn $ S3Object bucket key "" [] ""
        }
 
-putFile :: Verbosity            -- ^ Verbosity
-        -> Bool                 -- ^ Dry run (perform no action)
-        -> Bucket               -- ^ S3 bucket
-        -> String               -- ^ S3 key prefix
-        -> MimeType             -- ^ Mime type
-        -> FilePath             -- ^ Path to file to upload
+putFile :: Context            -- ^ Project execution context.
+        -> MimeType           -- ^ Mime type
+        -> FilePath           -- ^ Path to file to upload
         -> IO ()
-putFile verbosity dryRun (Bucket bucket) keyPrefix (MimeType mime) path =
+putFile Context{dryRun, verbosity, project =
+                    Project{s3Bucket = (Bucket bucket), s3KeyPrefix}
+               } (MimeType mime) path =
     do { conn <- connectToS3
        ; notice verbosity $ printf "uploading %s -> s3://%s/%s..." path bucket key
        ; unless dryRun $ withBinaryFile path ReadMode $
@@ -67,6 +66,6 @@ putFile verbosity dryRun (Bucket bucket) keyPrefix (MimeType mime) path =
        ; notice verbosity "done.\n"
        }
     where { toObject         = S3Object bucket key mime []
-          ; key              = keyPrefix </> takeFileName path
+          ; key              = s3KeyPrefix </> takeFileName path
           ; uploadFailure    = die . ("S3 upload failure: "++) . prettyReqError
           }
