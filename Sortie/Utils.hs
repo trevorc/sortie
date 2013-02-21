@@ -73,9 +73,7 @@ type Group = String
 instance IsString Pattern where fromString = Pattern
 
 (=^~) :: String -> Pattern -> [Group]
-str =^~ (Pattern pat) = case str =~ pat of
-                          ((_:groups):_) -> groups
-                          _              -> []
+str =^~ (Pattern pat) = drop 1 . concat . take 1 $ str =~ pat
 
 warFileType :: MimeType
 warFileType = MimeType "application/zip"
