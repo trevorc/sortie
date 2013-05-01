@@ -37,7 +37,7 @@ import System.Directory
     ( getCurrentDirectory, doesFileExist )
 import System.FilePath
     ( (</>), joinPath, normalise, splitDirectories )
-import Text.PrettyPrint          (($$), (<+>), nest, render, space, text, vcat)
+import Text.PrettyPrint          (($$), (<+>), empty, nest, render, space, text, vcat)
 import qualified Data.Map as Map
 
 import Sortie.Project            (Environment(..), Project(..),
@@ -63,6 +63,12 @@ projectDescriptionFields =
       s3Bucket    (\s3Bucket p    -> p {s3Bucket})
     , simpleField "s3-key-prefix"    showFilePath parseFilePathQ
       s3KeyPrefix (\s3KeyPrefix p -> p {s3KeyPrefix})
+    , simpleField        "aws-access-key-id"
+      (maybe empty disp) (Just <$> parse)
+      awsAccessKeyId     (\awsAccessKeyId p     -> p {awsAccessKeyId})
+    , simpleField        "aws-secret-access-key"
+      (maybe empty disp) (Just <$> parse)
+      awsSecretAccessKey (\awsSecretAccessKey p -> p {awsSecretAccessKey})
     ]
 
 environmentFields :: [FieldDescr Environment]

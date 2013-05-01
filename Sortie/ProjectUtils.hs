@@ -49,9 +49,10 @@ ensureTagExists Project{version} =
     elem (versionToTag version) <$> listTags
              `elseM` (unknownVersion "git" version)
 
-ensureArtifactInS3 :: Project -> IO ()
-ensureArtifactInS3 project@Project{s3Bucket, s3KeyPrefix, version} =
-    S3.hasKey s3Bucket s3Key `elseM` (unknownVersion "S3" version)
+ensureArtifactInS3 :: Context -> IO ()
+ensureArtifactInS3 ctx@Context{project = project@Project{
+                                           s3Bucket, s3KeyPrefix, version}} =
+    S3.hasKey ctx s3Bucket s3Key `elseM` (unknownVersion "S3" version)
     where s3Key = pack $ s3KeyPrefix </> artifactFileName project
 
 

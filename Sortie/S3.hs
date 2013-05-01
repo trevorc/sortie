@@ -12,15 +12,15 @@
 -----------------------------------------------------------------------------
 
 module Sortie.S3
-    ( connection
+    ( getCredentials
     , hasKey
     , putFile
     )
 where
 
 import Blaze.ByteString.Builder  (fromByteString)
-import Control.Applicative       ((<$>))
-import Control.Monad             (unless, void)
+import Control.Applicative       ((<$>), (<*>))
+import Control.Monad             (mplus, unless, void)
 import Crypto.Hash.MD5           (hash)
 import Data.ByteString           (hGetContents)
 import Data.Conduit              (($=))
@@ -34,41 +34,57 @@ import System.IO                 (IOMode(ReadMode), hFileSize, withBinaryFile)
 import Text.Printf               (printf)
 
 import Aws ( Configuration(..), Credentials, NormalQuery
-           , LogLevel(Warning), TimeInfo(Timestamp), defaultLog, simpleAws )
+           , LogLevel(Warning), TimeInfo(Timestamp)
+           , HeaderException(..)
+           , defaultLog, simpleAws )
 import qualified Aws
 import qualified Aws.S3 as S3
+import qualified Control.Exception as E
 import qualified Data.ByteString.Base16 as Base16
 import qualified Data.Text as Text (filter, pack, unpack)
 import qualified Data.ByteString.Char8 as ByteString (pack)
 import qualified Data.Conduit.List as CL (map)
 
 import Sortie.Context            (Context(..))
-import Sortie.Project            (Bucket(Bucket), Project(..), fromBucket)
+import Sortie.Project
+    ( fromAwsToken
+    , Bucket(Bucket), fromBucket
+    , Project(..) )
 import Sortie.Utils              (MimeType(..), die, info, notice)
 
-connection :: IO (Maybe Credentials)
-connection = Aws.loadCredentialsFromEnv
+getCredentials :: Context -> IO (Maybe Credentials)
+getCredentials Context{project = Project{awsAccessKeyId, awsSecretAccessKey}} =
+    mplus ctxCreds <$> Aws.loadCredentialsFromEnv
+    where ctxCreds = Aws.Credentials <$> fmap fromAwsToken awsAccessKeyId
+                                     <*> fmap fromAwsToken awsSecretAccessKey
 
 s3Config :: S3.S3Configuration NormalQuery
 s3Config = Aws.defServiceConfig
 
-connectToS3 :: IO Configuration
-connectToS3 = connection >>= maybe (die "aws keys not found") (return . configure)
+connectToS3 :: Context -> IO Configuration
+connectToS3 ctx = getCredentials ctx >>=
+                  maybe (die "aws keys not found") (return . configure)
     where configure credentials = Configuration {
                                     credentials
                                   , logger = defaultLog Warning
                                   , timeInfo = Timestamp}
 
-hasKey :: Bucket -> Text -> IO Bool
-hasKey bucket key = isJust <$> getKeyETag bucket key
+hasKey :: Context -> Bucket -> Text -> IO Bool
+hasKey ctx bucket key = isJust <$> getKeyETag ctx bucket key
 
-getKeyETag :: Bucket -> Text -> IO (Maybe Text)
-getKeyETag (Bucket bucket) key = do
-  { config <- connectToS3
-  ; S3.HeadObjectMemoryResponse (S3.ObjectMetadata{S3.omETag})
-      <- simpleAws config s3Config $ S3.headObject bucket key
-  ; return (Just omETag)
-  }
+getKeyETag :: Context -> Bucket -> Text -> IO (Maybe Text)
+getKeyETag ctx@Context{verbosity} (Bucket bucket) key =
+    getETag `E.catch` \HeaderException{headerErrorMessage} -> do
+      { info verbosity $ headerErrorMessage ++ "..."
+      ; return Nothing
+      }
+    where getETag = do
+            { config <- connectToS3 ctx
+            ; S3.HeadObjectMemoryResponse (S3.ObjectMetadata{S3.omETag})
+                  <- simpleAws config s3Config $ S3.headObject bucket key
+            ; return (Just omETag)
+            }
+
 
 isUpToDate :: Context           -- ^ Project execution context
            -> FilePath          -- ^ Filesystem path to artifact
@@ -76,18 +92,18 @@ isUpToDate :: Context           -- ^ Project execution context
            -> Text              -- ^ Key within S3 bucket to uploaded
                                 --   artifact
            -> IO Bool
-isUpToDate Context{verbosity} path s3Bucket key = do
+isUpToDate ctx@Context{verbosity} path s3Bucket key = do
     { md5 <- withBinaryFile path ReadMode $ \h ->
              decodeUtf8 . Base16.encode . hash <$> hGetContents h
     ; info verbosity $ printf "md5 %s..." (Text.unpack md5)
-    ; etag <- fmap (Text.filter (/= '"')) <$> getKeyETag s3Bucket key
+    ; etag <- fmap (Text.filter (/= '"')) <$> getKeyETag ctx s3Bucket key
     ; info verbosity $ printf "etag %s..." $ maybe "(null)" Text.unpack etag
     ; return $ maybe False (== md5) etag
     }
 
 putObject :: Context -> FilePath -> MimeType -> Bucket -> Text -> IO ()
-putObject Context{verbosity} path (MimeType mime) (Bucket bucket) key =
-    do { config <- connectToS3
+putObject ctx@Context{verbosity} path (MimeType mime) (Bucket bucket) key =
+    do { config <- connectToS3 ctx
        ; size <- fromInteger <$> withBinaryFile path ReadMode hFileSize
        ; info verbosity $ printf "size %s..." (show size)
        ; let { requestBody = RequestBodySource size $

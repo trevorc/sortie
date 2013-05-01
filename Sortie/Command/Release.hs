@@ -29,12 +29,12 @@ import Sortie.SourceControl
     ( hasUncommittedChanges, getChangedFiles
     , ensureTagForHEAD )
 import qualified Sortie.S3 as S3
-    ( connection, putFile )
+    ( getCredentials, putFile )
 
 release :: Context -> IO ()
 release ctx@Context{project = Project{version}} =
     do { not <$> hasUncommittedChanges `elseM` changedFiles
-       ; isJust <$> S3.connection `elseM` missingS3Env
+       ; isJust <$> S3.getCredentials ctx `elseM` missingS3Env
        ; ensureMatchingProjectName ctx
        ; ensureMatchingProjectVersion ctx
        ; ensureTagForHEAD ctx version

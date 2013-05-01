@@ -12,7 +12,8 @@
 -----------------------------------------------------------------------------
 
 module Sortie.Project
-    ( Bucket(..), fromBucket
+    ( AwsToken(..), fromAwsToken
+    , Bucket(..), fromBucket
     , Project(..), emptyProject
     , Environment(..), emptyEnvironment
     , getPackageName
@@ -39,10 +40,12 @@ emptyEnvironment
 emptyProject :: Project
 emptyProject
     = Project
-       { projectName  = PackageName ""
-       , version      = Version [] []
-       , repository   = ""
-       , s3Bucket     = Bucket ""
-       , s3KeyPrefix  = ""
-       , environments = Map.empty
+       { projectName        = PackageName ""
+       , version            = Version [] []
+       , repository         = ""
+       , s3Bucket           = Bucket ""
+       , s3KeyPrefix        = ""
+       , awsAccessKeyId     = Nothing
+       , awsSecretAccessKey = Nothing
+       , environments       = Map.empty
        }

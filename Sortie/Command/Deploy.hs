@@ -52,7 +52,7 @@ deploy :: Context               -- ^ Execution context.
        -> IO ()
 deploy ctx version env =
     do { ensureTagExists project'
-       ; ensureArtifactInS3 project'
+       ; ensureArtifactInS3 ctx {project = project'}
        ; ssh ctx env $ projectEnvVars project'
        }
     where project' = (project ctx) {version}
