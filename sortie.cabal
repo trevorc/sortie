@@ -1,5 +1,5 @@
 Name: sortie
-Version: 0.1
+Version: 0.1.1
 License: AllRightsReserved
 Cabal-Version: >= 1.10
 Build-Type: Simple
@@ -7,19 +7,25 @@ Build-Type: Simple
 Executable sortie
   Main-Is: Main.hs
   Default-Language: Haskell2010
-  Build-Depends: base,
+  Build-Depends: aws >= 0.7.6,
+                 base,
+                 base16-bytestring,
+                 blaze-builder,
                  bytestring,
                  Cabal >= 1.10,
+                 conduit,
                  containers,
+                 cryptohash,
                  directory,
                  filepath,
-                 hS3,
+                 http-conduit,
                  monad-loops,
                  pretty,
                  process,
                  regex-base,
                  regex-pcre,
                  split,
+                 text,
                  unix
   GHC-Options: -Wall -Werror -O2
   if !os(darwin)

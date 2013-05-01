@@ -26,19 +26,20 @@ import Distribution.Package    (PackageName(PackageName))
 import Distribution.ParseUtils (parseTokenQ, showToken)
 import Distribution.Text       (Text(..))
 import Distribution.Version    (Version)
+import qualified Data.Text as T (Text, pack, unpack)
 
-newtype Bucket = Bucket String
+newtype Bucket = Bucket T.Text
     deriving Eq
 
 instance Text Bucket where
-    parse = Bucket <$> parseTokenQ
-    disp (Bucket b) = showToken b
+    parse = Bucket . T.pack <$> parseTokenQ
+    disp (Bucket b) = showToken $ T.unpack b
 
 getPackageName :: PackageName -> String
 getPackageName (PackageName name) = name
 
 fromBucket :: Bucket -> String
-fromBucket (Bucket b) = b
+fromBucket (Bucket b) = T.unpack b
 
 data Environment = Environment
      { host             :: String

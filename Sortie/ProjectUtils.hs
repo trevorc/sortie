@@ -22,6 +22,7 @@ where
 import Control.Arrow           (first)
 import Control.Applicative     ((<$>))
 import Data.Version            (showVersion)
+import Data.Text               (pack)
 import Distribution.Version    (Version)
 import System.FilePath         ((</>))
 import Text.Printf             (printf)
@@ -50,8 +51,8 @@ ensureTagExists Project{version} =
 
 ensureArtifactInS3 :: Project -> IO ()
 ensureArtifactInS3 project@Project{s3Bucket, s3KeyPrefix, version} =
-    S3.hasKey s3Bucket (s3KeyPrefix </> artifactFileName project)
-          `elseM` (unknownVersion "S3" version)
+    S3.hasKey s3Bucket s3Key `elseM` (unknownVersion "S3" version)
+    where s3Key = pack $ s3KeyPrefix </> artifactFileName project
 
 
 projectEnvVars :: Project -> [(String, String)]
