@@ -162,6 +162,6 @@ writeCommand :: Verbosity
              -> IO ()
 writeCommand verbosity cmd args input =
     do { (_, errors, status) <- rawSystemStdInOut verbosity cmd args
-                                (Just (input, True)) True
+                                Nothing Nothing (Just (input, True)) True
        ; unless (status == ExitSuccess) $ die errors
        }

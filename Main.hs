@@ -23,14 +23,14 @@ import Control.Monad               (unless, when)
 import Data.Char                   (toLower)
 import Data.List                   ((\\), intercalate)
 import Data.Maybe                  (mapMaybe)
+import Distribution.Simple.Command
+    ( CommandParse(..), commandsRun, commandAddAction )
 import Distribution.Simple.Setup   (fromFlag, fromFlagOrDefault)
 import Distribution.Simple.Utils   (die, topHandler)
 import Distribution.Text           (display)
 import System.Environment          (getArgs, getProgName)
 import System.IO                   (hPutStr, stderr)
 import Text.Printf                 (printf)
-import Distribution.Simple.Command
-    ( CommandParse(..), commandsRun, commandAddAction )
 import qualified Data.Map as Map
 
 import Sortie.Command

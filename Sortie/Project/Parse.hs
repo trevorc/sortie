@@ -48,9 +48,6 @@ import Sortie.Utils
     , warn
     , withFileContents )
 
-instance Functor     ParseResult where { fmap f m = m >>= return . f }
-instance Applicative ParseResult where { pure = return ; (<*>) = ap }
-
 projectDescriptionFields :: [FieldDescr Project]
 projectDescriptionFields =
     [ simpleField "name"             disp parse

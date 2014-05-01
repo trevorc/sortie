@@ -19,16 +19,18 @@ module Sortie.S3
 where
 
 import Blaze.ByteString.Builder  (fromByteString)
-import Control.Applicative       ((<$>), (<*>))
+import Control.Applicative       ((<$>), (<*>), pure)
 import Control.Monad             (mplus, unless, void)
 import Crypto.Hash.MD5           (hash)
 import Data.ByteString           (hGetContents)
 import Data.Conduit              (($=))
 import Data.Conduit.Binary       (sourceFile)
+import Data.Functor              ((<$))
+import Data.IORef                (newIORef)
 import Data.Maybe                (isJust)
 import Data.Text                 (Text)
 import Data.Text.Encoding        (decodeUtf8)
-import Network.HTTP.Conduit      (RequestBody(RequestBodySource))
+import Network.HTTP.Conduit      (requestBodySource)
 import System.FilePath           ((</>), takeFileName)
 import System.IO                 (IOMode(ReadMode), hFileSize, withBinaryFile)
 import Text.Printf               (printf)
@@ -54,7 +56,9 @@ import Sortie.Utils              (MimeType(..), die, info, notice)
 
 getCredentials :: Context -> IO (Maybe Credentials)
 getCredentials Context{project = Project{awsAccessKeyId, awsSecretAccessKey}} =
-    mplus ctxCreds <$> Aws.loadCredentialsFromEnv
+    do ref <- newIORef []
+       envCreds <- Aws.loadCredentialsFromEnv
+       return $ (ctxCreds <*> pure ref) `mplus` envCreds
     where ctxCreds = Aws.Credentials <$> fmap fromAwsToken awsAccessKeyId
                                      <*> fmap fromAwsToken awsSecretAccessKey
 
@@ -74,10 +78,8 @@ hasKey ctx bucket key = isJust <$> getKeyETag ctx bucket key
 
 getKeyETag :: Context -> Bucket -> Text -> IO (Maybe Text)
 getKeyETag ctx@Context{verbosity} (Bucket bucket) key =
-    getETag `E.catch` \HeaderException{headerErrorMessage} -> do
-      { info verbosity $ headerErrorMessage ++ "..."
-      ; return Nothing
-      }
+    getETag `E.catch` \HeaderException{headerErrorMessage} ->
+        Nothing <$ info verbosity (headerErrorMessage ++ "...")
     where getETag = do
             { config <- connectToS3 ctx
             ; S3.HeadObjectMemoryResponse (S3.ObjectMetadata{S3.omETag})
@@ -106,8 +108,7 @@ putObject ctx@Context{verbosity} path (MimeType mime) (Bucket bucket) key =
     do { config <- connectToS3 ctx
        ; size <- fromInteger <$> withBinaryFile path ReadMode hFileSize
        ; info verbosity $ printf "size %s..." (show size)
-       ; let { requestBody = RequestBodySource size $
-                             sourceFile path $= CL.map fromByteString
+       ; let { requestBody = requestBodySource size $ sourceFile path
              ; por = S3.putObject bucket key requestBody
              ; poContentType = Just $ ByteString.pack mime
              }
